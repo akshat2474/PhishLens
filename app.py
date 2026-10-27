@@ -394,18 +394,18 @@ st.markdown("""
 # -------------------------------------------------------------------
 # -------------------------------------------------------------------
 if "scanner_mode" not in st.session_state:
-    st.session_state["scanner_mode"] = "Live URL input"
+    st.session_state["scanner_mode"] = "UCI benchmark record"
 if "target_url" not in st.session_state:
     st.session_state["target_url"] = "https://secure-auth-verification.example.org/portal"
 if "dataset_sample_idx" not in st.session_state:
     st.session_state["dataset_sample_idx"] = 835
 
-# Mode Toggle (Image 2 style)
+# Mode Toggle
 c_mode, _ = st.columns([2, 3])
 selected_mode = c_mode.radio(
     "Inspection source",
-    options=["Live URL input", "UCI benchmark record"],
-    index=0 if st.session_state["scanner_mode"] == "Live URL input" else 1,
+    options=["UCI benchmark record", "Live URL input"],
+    index=0 if st.session_state["scanner_mode"] == "UCI benchmark record" else 1,
     horizontal=True,
     label_visibility="collapsed",
 )
