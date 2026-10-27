@@ -1,0 +1,307 @@
+{
+  "feature_groups": {
+    "Address Bar (Lexical)": [
+      "having_IP_Address",
+      "URL_Length",
+      "Shortining_Service",
+      "having_At_Symbol",
+      "double_slash_redirecting",
+      "Prefix_Suffix",
+      "having_Sub_Domain",
+      "SSLfinal_State",
+      "HTTPS_token",
+      "port"
+    ],
+    "Abnormal & Network": [
+      "Domain_registeration_length",
+      "Abnormal_URL",
+      "age_of_domain",
+      "DNSRecord"
+    ],
+    "HTML & JavaScript DOM": [
+      "Favicon",
+      "Request_URL",
+      "URL_of_Anchor",
+      "Links_in_tags",
+      "SFH",
+      "Submitting_to_email",
+      "Redirect",
+      "on_mouseover",
+      "RightClick",
+      "popUpWidnow",
+      "Iframe"
+    ],
+    "External Reputation (Historical)": [
+      "web_traffic",
+      "Page_Rank",
+      "Google_Index",
+      "Links_pointing_to_page",
+      "Statistical_report"
+    ]
+  },
+  "live_lexical_features": [
+    "having_IP_Address",
+    "URL_Length",
+    "Shortining_Service",
+    "having_At_Symbol",
+    "double_slash_redirecting",
+    "Prefix_Suffix",
+    "having_Sub_Domain",
+    "HTTPS_token"
+  ],
+  "features": {
+    "having_IP_Address": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Checks if the hostname is an IP address instead of a domain name.",
+      "rule": "IP address used in domain part -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "The URL uses a raw IP address instead of a recognized domain name, a tactic to obscure real host identity.",
+      "plain_explanation_legit": "The URL uses a standard domain name."
+    },
+    "URL_Length": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Measures total character length of the URL.",
+      "rule": "< 54 chars -> Legitimate (1), 54-75 -> Suspicious (0), > 75 -> Phishing (-1)",
+      "plain_explanation_phishing": "The URL is excessively long (> 75 chars), often used to hide the suspicious domain part.",
+      "plain_explanation_legit": "The URL length is within normal standard bounds (< 54 chars)."
+    },
+    "Shortining_Service": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Detects if URL shortening services (e.g., bit.ly, tinyurl) are used.",
+      "rule": "Uses shortening service -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Uses a URL shortener to hide the real destination address.",
+      "plain_explanation_legit": "Direct domain destination; no URL obfuscation service detected."
+    },
+    "having_At_Symbol": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Checks for the '@' symbol in the URL.",
+      "rule": "'@' in URL -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Contains '@' symbol, which causes browsers to ignore preceding text and route to the following host.",
+      "plain_explanation_legit": "No deceptive '@' authentication symbol detected in URL."
+    },
+    "double_slash_redirecting": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Detects double slash '//' occurring after the protocol.",
+      "rule": "Last occurrence of '//' > position 7 -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Contains '//' deep inside the path, redirecting users to an unexpected host.",
+      "plain_explanation_legit": "Clean path structure with standard protocol slash position."
+    },
+    "Prefix_Suffix": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Detects hyphen/dash ('-') inside the domain name.",
+      "rule": "Domain contains '-' -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Domain name contains a hyphen ('-'), frequently used in brand spoofing (e.g. 'paypal-support.com').",
+      "plain_explanation_legit": "Domain name does not contain deceptive hyphenated brand prefixes."
+    },
+    "having_Sub_Domain": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Counts subdomain levels in the domain part.",
+      "rule": "1 dot -> Legitimate (1), 2 dots -> Suspicious (0), > 2 dots -> Phishing (-1)",
+      "plain_explanation_phishing": "Unusually deep subdomain hierarchy (> 2 subdomains), commonly used to mimic complex trusted paths.",
+      "plain_explanation_legit": "Standard shallow subdomain structure."
+    },
+    "SSLfinal_State": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": false,
+      "description": "Evaluates SSL certificate trust issuer and validity lifespan.",
+      "rule": "Trusted CA + age >= 1 yr -> Legitimate (1), untrusted CA -> Suspicious (0), no SSL/expired -> Phishing (-1)",
+      "plain_explanation_phishing": "Missing, untrusted, or expired SSL certificate.",
+      "plain_explanation_legit": "Valid HTTPS with trusted Certificate Authority and verified lifespan."
+    },
+    "Domain_registeration_length": {
+      "group": "Abnormal & Network",
+      "extractable_live": false,
+      "description": "Length of time until domain registration expires.",
+      "rule": "Expires in <= 1 year -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Domain registered for only 1 year or near expiration, typical of disposable attack domains.",
+      "plain_explanation_legit": "Long-term multi-year domain registration indicating established commitment."
+    },
+    "Favicon": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Checks if the site icon (favicon) is loaded from an external domain.",
+      "rule": "Favicon from external domain -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Favicon loaded from external server, typical of cloned page templates.",
+      "plain_explanation_legit": "Favicon served locally from the host domain."
+    },
+    "port": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": false,
+      "description": "Checks if non-standard or dangerous network ports are open.",
+      "rule": "Standard ports only -> Legitimate (1), non-standard open ports -> Phishing (-1)",
+      "plain_explanation_phishing": "Host runs non-standard or vulnerable open ports.",
+      "plain_explanation_legit": "Standard secure web ports (80/443)."
+    },
+    "HTTPS_token": {
+      "group": "Address Bar (Lexical)",
+      "extractable_live": true,
+      "description": "Checks if 'https' token is embedded in the domain part of the URL.",
+      "rule": "'https' in domain part -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "The token 'https' is deceptively added to the domain string (e.g. 'https-login.com').",
+      "plain_explanation_legit": "No deceptive protocol token inside the domain name."
+    },
+    "Request_URL": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Percentage of external media (images/videos) loaded from foreign domains.",
+      "rule": "< 22% external -> Legitimate (1), 22-61% -> Suspicious (0), >= 61% -> Phishing (-1)",
+      "plain_explanation_phishing": "Majority of page media loaded from external sources, indicating a scraped template.",
+      "plain_explanation_legit": "Media assets predominantly hosted on origin domain."
+    },
+    "URL_of_Anchor": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Percentage of anchor (<a>) links leading to external domains or dummy targets.",
+      "rule": "< 31% abnormal -> Legitimate (1), 31-67% -> Suspicious (0), >= 67% -> Phishing (-1)",
+      "plain_explanation_phishing": "Most links point to dummy destinations ('#') or external untrusted domains.",
+      "plain_explanation_legit": "Links point internally to legitimate site navigation."
+    },
+    "Links_in_tags": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Percentage of links in <meta>, <script>, and <link> tags pointing externally.",
+      "rule": "< 17% -> Legitimate (1), 17-81% -> Suspicious (0), >= 81% -> Phishing (-1)",
+      "plain_explanation_phishing": "High proportion of metadata tags linking outside the host domain.",
+      "plain_explanation_legit": "Normal internal script and style sheet linkage."
+    },
+    "SFH": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Server Form Handler action attribute destination.",
+      "rule": "Empty or 'about:blank' -> Phishing (-1), foreign domain -> Suspicious (0), internal -> Legitimate (1)",
+      "plain_explanation_phishing": "Login form action is empty, about:blank, or submits to a different domain.",
+      "plain_explanation_legit": "Form action posts securely to the verified origin host."
+    },
+    "Submitting_to_email": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Checks if form submission sends harvested data via mailto: or mail().",
+      "rule": "Uses mailto: -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Form directly submits entered user data to an email address.",
+      "plain_explanation_legit": "No direct email harvesting handler detected."
+    },
+    "Abnormal_URL": {
+      "group": "Abnormal & Network",
+      "extractable_live": false,
+      "description": "Checks if the host name matches the domain in WHOIS.",
+      "rule": "Host not recognized in WHOIS identity -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "URL host does not match WHOIS registry records.",
+      "plain_explanation_legit": "Host matches official registration records."
+    },
+    "Redirect": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Counts total page redirection hops.",
+      "rule": "<= 1 redirect -> Legitimate (1), 2-4 -> Suspicious (0), >= 4 -> Phishing (-1)",
+      "plain_explanation_phishing": "Excessive redirection chains (> 4 hops) to evade automated scanners.",
+      "plain_explanation_legit": "Direct destination or single standard redirect."
+    },
+    "on_mouseover": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Checks if JavaScript alters browser status bar on hover.",
+      "rule": "window.status changed -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "JavaScript dynamically masks real destination in the browser status bar.",
+      "plain_explanation_legit": "No status bar tampering script detected."
+    },
+    "RightClick": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Checks if context menu (right click) is disabled via JS.",
+      "rule": "Right-click disabled -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Right-clicking disabled to prevent user from viewing page source.",
+      "plain_explanation_legit": "Right-clicking allowed normally."
+    },
+    "popUpWidnow": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Detects popup windows containing credential inputs.",
+      "rule": "Popup contains form fields -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Suspicious popup window demanding login credentials.",
+      "plain_explanation_legit": "No rogue credential-harvesting popups."
+    },
+    "Iframe": {
+      "group": "HTML & JavaScript DOM",
+      "extractable_live": false,
+      "description": "Detects hidden or invisible iframes (e.g. frameBorder='0').",
+      "rule": "Invisible iframe present -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Contains invisible iframe used for clickjacking or silent overlays.",
+      "plain_explanation_legit": "No hidden overlay iframe detected."
+    },
+    "age_of_domain": {
+      "group": "Abnormal & Network",
+      "extractable_live": false,
+      "description": "Age of domain since initial WHOIS creation.",
+      "rule": "Age < 6 months -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Newly created domain (< 6 months), high risk of disposable phishing setup.",
+      "plain_explanation_legit": "Aged domain with established operational history."
+    },
+    "DNSRecord": {
+      "group": "Abnormal & Network",
+      "extractable_live": false,
+      "description": "Checks if domain resolves in public DNS servers.",
+      "rule": "No DNS record -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Domain has no valid DNS record, indicating a ghost or temporary host.",
+      "plain_explanation_legit": "Valid, actively resolving DNS records."
+    },
+    "web_traffic": {
+      "group": "External Reputation (Historical)",
+      "extractable_live": false,
+      "deprecated": true,
+      "description": "Website popularity rank (historically via Alexa).",
+      "rule": "Rank < 100K -> Legitimate (1), > 100K -> Suspicious (0), unranked -> Phishing (-1)",
+      "plain_explanation_phishing": "Domain has virtually no global web traffic or popularity footprint.",
+      "plain_explanation_legit": "High-traffic domain with widespread legitimate user base."
+    },
+    "Page_Rank": {
+      "group": "External Reputation (Historical)",
+      "extractable_live": false,
+      "deprecated": true,
+      "description": "Google PageRank score (API deprecated since 2016).",
+      "rule": "PageRank < 0.2 -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "PageRank is 0 or extremely low, indicating an isolated, unlinked site.",
+      "plain_explanation_legit": "Established inbound authority backlink score."
+    },
+    "Google_Index": {
+      "group": "External Reputation (Historical)",
+      "extractable_live": false,
+      "description": "Checks if webpage is indexed in Google search.",
+      "rule": "Indexed -> Legitimate (1), Not indexed -> Phishing (-1)",
+      "plain_explanation_phishing": "Page is not indexed in search engines (frequent with short-lived attacks).",
+      "plain_explanation_legit": "Verified indexed page in search engine results."
+    },
+    "Links_pointing_to_page": {
+      "group": "External Reputation (Historical)",
+      "extractable_live": false,
+      "description": "Number of external web pages linking to this target.",
+      "rule": "0 links -> Phishing (-1), 1-2 -> Suspicious (0), > 2 -> Legitimate (1)",
+      "plain_explanation_phishing": "Zero inbound links pointing to this page across the web.",
+      "plain_explanation_legit": "Multiple independent websites link to this domain."
+    },
+    "Statistical_report": {
+      "group": "External Reputation (Historical)",
+      "extractable_live": false,
+      "description": "Matches host against known phishing intelligence feeds (PhishTank, StopBadware).",
+      "rule": "Host in phishing blacklist -> Phishing (-1), otherwise Legitimate (1)",
+      "plain_explanation_phishing": "Domain or IP address flagged in threat intelligence feeds.",
+      "plain_explanation_legit": "Clean reputation; not listed on active threat blacklists."
+    }
+  },
+  "total_features": 30,
+  "target_mapping": {
+    "-1": {
+      "name": "Phishing",
+      "binary_label": 1
+    },
+    "1": {
+      "name": "Legitimate",
+      "binary_label": 0
+    }
+  }
+}
