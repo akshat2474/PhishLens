@@ -120,24 +120,73 @@ st.markdown("""
         color: #9B9B9B;
     }
 
-    /* Cards & Containers */
-    .panel {
+    /* Scanner Console Frame */
+    .console-frame {
         background-color: #181818;
         border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .console-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin-bottom: 16px;
     }
 
-    .panel-sub {
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 14px 16px;
-        margin-bottom: 12px;
+    .console-tag {
+        font-family: 'Geist Mono', monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #9B9B9B;
+        letter-spacing: 0.08em;
+        font-weight: 600;
     }
 
-    /* Threat Verdicts */
+    /* Anatomy Deck */
+    .anatomy-deck {
+        background-color: #1F1F1F;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+    }
+
+    .anatomy-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .anatomy-card {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px;
+    }
+
+    .anatomy-label {
+        font-size: 11px;
+        line-height: 16px;
+        color: #9B9B9B;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .anatomy-val {
+        font-family: 'Geist Mono', monospace;
+        font-size: 13px;
+        line-height: 18px;
+        color: #FFFFFF;
+        font-weight: 600;
+        margin-top: 2px;
+        word-break: break-all;
+    }
+
+    /* Verdict Card */
     .verdict-card {
         background-color: #181818;
         border-radius: 12px;
@@ -184,20 +233,6 @@ st.markdown("""
         color: #FFFFFF;
     }
 
-    /* URL Breakdown Chips */
-    .url-chip {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 6px;
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        font-family: 'Geist Mono', monospace;
-        font-size: 12px;
-        line-height: 16px;
-        margin-right: 6px;
-        margin-bottom: 6px;
-    }
-
     /* Buttons */
     .stButton > button {
         font-family: 'Geist', sans-serif !important;
@@ -216,12 +251,25 @@ st.markdown("""
         border-color: #444444 !important;
     }
 
+    /* Form Submit Button */
+    [data-testid="stFormSubmitButton"] > button {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+
+    [data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #E0E0E0 !important;
+        border-color: #E0E0E0 !important;
+    }
+
     /* Inputs */
     .stTextInput input {
         font-family: 'Geist Mono', monospace !important;
         font-size: 14px !important;
-        background-color: #181818 !important;
-        border: 1px solid #272727 !important;
+        background-color: #1F1F1F !important;
+        border: 1px solid #313131 !important;
         border-radius: 8px !important;
         color: #FFFFFF !important;
         padding: 10px 14px !important;
@@ -305,12 +353,12 @@ def get_catalog_and_metrics():
 live_explainer, full_explainer = get_explainers()
 catalog, model_metrics, test_dataset = get_catalog_and_metrics()
 
-# Top Bar
+# Top Navigation Bar
 st.markdown("""
 <div class="nav-bar">
     <div class="brand-title">
         <span>PhishLens</span>
-        <span style="font-size: 13px; font-weight: 400; color: #9B9B9B;">// explainable phishing detection</span>
+        <span style="font-size: 13px; font-weight: 400; color: #9B9B9B;">// explainable threat intelligence</span>
     </div>
     <div style="display: flex; gap: 8px;">
         <div class="status-pill">
@@ -340,7 +388,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Navigation
+# Navigation Tabs
 tabs = st.tabs([
     "Live URL scanner",
     "Dataset laboratory",
@@ -352,205 +400,254 @@ tabs = st.tabs([
 # TAB 1: LIVE SCANNER
 # -------------------------------------------------------------------
 with tabs[0]:
-    st.markdown("#### Live address inspection")
-    st.caption("Sub millisecond offline evaluation of website address patterns without network requests.")
+    # Initialize session state for current target URL
+    if "target_url" not in st.session_state:
+        st.session_state["target_url"] = "https://secure-login-paypal.com/verify"
 
-    # Preset selection chips
-    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-    preset_choice = None
-    if c_p1.button("Google (Legitimate)", use_container_width=True):
-        preset_choice = "https://www.google.com"
-    if c_p2.button("PayPal Spoof (Hyphen)", use_container_width=True):
-        preset_choice = "https://secure-login-paypal.com/verify"
-    if c_p3.button("Raw IP Host (Phishing)", use_container_width=True):
-        preset_choice = "http://192.168.1.100/paypal/login.html"
-    if c_p4.button("Shortened URL (Bitly)", use_container_width=True):
-        preset_choice = "http://bit.ly/3xYzAq9"
-
-    current_val = preset_choice if preset_choice else "https://secure-login-paypal.com/verify"
-    col_input, col_submit = st.columns([5, 1])
-    target_address = col_input.text_input("Address input", value=current_val, label_visibility="collapsed")
-    trigger_eval = col_submit.button("Scan URL", use_container_width=True)
-
-    if target_address:
-        clean_url = sanitize_url(target_address)
-        parsed = urllib.parse.urlparse(clean_url)
-        extracted_feats = extract_live_feature_vector(clean_url)
-
-        # Allow user interaction: What-If Feature Toggles
-        with st.expander("Interactive feature sandbox (toggle parameters to simulate what if)", expanded=False):
-            st.caption("Adjust extracted feature values to observe immediate updates in prediction and Shapley attribution.")
-            t_cols = st.columns(4)
-            simulated_feats = []
-            for i, feat_name in enumerate(LIVE_FEATURES):
-                curr_feat_val = extracted_feats[i]
-                options = [1, 0, -1] if feat_name in ["URL_Length", "having_Sub_Domain"] else [1, -1]
-                idx_sel = options.index(curr_feat_val) if curr_feat_val in options else 0
-                new_v = t_cols[i % 4].selectbox(
-                    feat_name,
-                    options=options,
-                    index=idx_sel,
-                    format_func=lambda x: "Legitimate (1)" if x == 1 else ("Suspicious (0)" if x == 0 else "Phishing (-1)"),
-                    key=f"sim_{feat_name}",
-                )
-                simulated_feats.append(new_v)
-
-        # Run model & explainer on active features (simulated or direct)
-        active_features = simulated_feats if simulated_feats else extracted_feats
-        scan_res = live_explainer.explain_instance(active_features)
-        risk_pct = scan_res["phishing_probability"] * 100
-        is_malicious = risk_pct >= 50.0
-
-        # Structural Anatomy Bar
-        st.markdown(f"""
-        <div style="background-color: #181818; border: 1px solid #272727; border-radius: 8px; padding: 10px 14px; margin: 16px 0;">
-            <span style="font-size: 11px; color: #9B9B9B; text-transform: uppercase; font-weight: 600; margin-right: 12px;">Address structure</span>
-            <span class="url-chip" style="color: #9B9B9B;">{parsed.scheme}://</span>
-            <span class="url-chip" style="color: #FFFFFF; font-weight: 600;">{parsed.netloc}</span>
-            <span class="url-chip">{parsed.path or '/'}</span>
-            {f'<span class="url-chip">?{parsed.query}</span>' if parsed.query else ''}
+    # Scanner Console Container
+    st.markdown("""
+    <div class="console-frame">
+        <div class="console-header">
+            <span class="console-tag">SECURITY SCANNER COMMAND BAR</span>
+            <span style="font-size: 12px; color: #9B9B9B;">Offline Lexical Engine • 0ms Network Telemetry</span>
         </div>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-        # Verdict Summary Card
-        card_class = "verdict-critical" if risk_pct >= 70 else ("verdict-warning" if risk_pct >= 50 else "verdict-safe")
-        verdict_title = "Phishing attack detected" if risk_pct >= 70 else ("Suspicious address pattern" if risk_pct >= 50 else "Legitimate domain structure")
-        verdict_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
+    # One-click test vector preset buttons
+    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+    if col_p1.button("Google (Legitimate)", use_container_width=True):
+        st.session_state["target_url"] = "https://www.google.com"
+        st.session_state.pop("sandbox_overrides", None)
+        st.rerun()
 
-        st.markdown(f"""
-        <div class="verdict-card {card_class}">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #9B9B9B; font-weight: 600;">Automated classification</div>
-                    <div style="font-size: 22px; font-weight: 600; color: {verdict_color}; margin-top: 2px;">{verdict_title}</div>
-                    <div style="font-size: 13px; color: #9B9B9B; margin-top: 4px;">Evaluated across eight offline lexical properties with zero network exposure.</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 11px; color: #9B9B9B; text-transform: uppercase;">Probability of phishing</div>
-                    <div style="font-family: 'Geist Mono'; font-size: 28px; font-weight: 700; color: {verdict_color};">{risk_pct:.1f}%</div>
-                </div>
+    if col_p2.button("PayPal Spoof (Hyphen)", use_container_width=True):
+        st.session_state["target_url"] = "https://secure-login-paypal.com/verify"
+        st.session_state.pop("sandbox_overrides", None)
+        st.rerun()
+
+    if col_p3.button("Raw IP Host (Phishing)", use_container_width=True):
+        st.session_state["target_url"] = "http://192.168.1.100/paypal/login.html"
+        st.session_state.pop("sandbox_overrides", None)
+        st.rerun()
+
+    if col_p4.button("Shortened URL (Bitly)", use_container_width=True):
+        st.session_state["target_url"] = "http://bit.ly/3xYzAq9"
+        st.session_state.pop("sandbox_overrides", None)
+        st.rerun()
+
+    # Dedicated Form for Scan URL (Ensures clicking Scan URL or pressing Enter ALWAYS triggers)
+    with st.form("scan_url_form", clear_on_submit=False):
+        c_input, c_btn = st.columns([5, 1])
+        entered_text = c_input.text_input(
+            "Address input",
+            value=st.session_state["target_url"],
+            placeholder="Enter website address to inspect (e.g. https://...)",
+            label_visibility="collapsed",
+        )
+        scan_submitted = c_btn.form_submit_button("Scan URL", use_container_width=True)
+
+        if scan_submitted and entered_text.strip():
+            st.session_state["target_url"] = entered_text.strip()
+            st.session_state.pop("sandbox_overrides", None)
+            st.rerun()
+
+    # Close console-frame div
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Active Analysis Execution
+    active_url = st.session_state["target_url"]
+    clean_url = sanitize_url(active_url)
+    parsed = urllib.parse.urlparse(clean_url)
+    raw_feats_dict = extract_live_lexical_features(clean_url)
+    extracted_vector = [raw_feats_dict[f] for f in LIVE_FEATURES]
+
+    # Anatomy Deck (Visual URL Dissection)
+    st.markdown(f"""
+    <div class="anatomy-deck">
+        <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600; letter-spacing: 0.05em;">
+            Address Forensic Decomposition
+        </div>
+        <div class="anatomy-grid">
+            <div class="anatomy-card">
+                <div class="anatomy-label">Scheme</div>
+                <div class="anatomy-val" style="color: #9B9B9B;">{parsed.scheme or 'http'}://</div>
+            </div>
+            <div class="anatomy-card">
+                <div class="anatomy-label">Registered Host</div>
+                <div class="anatomy-val" style="color: #FFFFFF;">{parsed.netloc}</div>
+            </div>
+            <div class="anatomy-card">
+                <div class="anatomy-label">Path Destination</div>
+                <div class="anatomy-val" style="color: #9B9B9B;">{parsed.path or '/'}</div>
+            </div>
+            <div class="anatomy-card">
+                <div class="anatomy-label">Length & Dots</div>
+                <div class="anatomy-val">{len(clean_url)} chars • {parsed.netloc.count('.')} dots</div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
-        # Two-Column Layout: Gauge on Left, Waterfall on Right
-        col_gauge, col_waterfall = st.columns([2, 3])
-
-        with col_gauge:
-            st.markdown("##### Threat risk gauge")
-            st.caption("Calibrated probability metric output by the lexical XGBoost classifier.")
-
-            gauge_bar_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
-
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=risk_pct,
-                number={"suffix": "%", "font": {"family": "Geist Mono", "size": 32, "color": "#FFFFFF"}},
-                gauge={
-                    "axis": {"range": [0, 100], "tickcolor": "#9B9B9B", "tickwidth": 1, "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"}},
-                    "bar": {"color": gauge_bar_color, "thickness": 0.28},
-                    "bgcolor": "#1F1F1F",
-                    "borderwidth": 0,
-                    "steps": [
-                        {"range": [0, 50], "color": "#181818"},
-                        {"range": [50, 70], "color": "#1F1F1F"},
-                        {"range": [70, 100], "color": "#272727"},
-                    ],
-                }
-            ))
-
-            fig_gauge.update_layout(
-                paper_bgcolor="#000000",
-                plot_bgcolor="#000000",
-                margin=dict(l=20, r=20, t=20, b=10),
-                height=220,
+    # Interactive Sandbox Expander
+    with st.expander("Interactive feature sandbox (toggle parameters to test what if)", expanded=False):
+        st.caption("Toggle individual extracted properties below to test model sensitivity and recalculate Shapley values.")
+        s_cols = st.columns(4)
+        active_vector = list(extracted_vector)
+        for i, feat_name in enumerate(LIVE_FEATURES):
+            extracted_v = extracted_vector[i]
+            options = [1, 0, -1] if feat_name in ["URL_Length", "having_Sub_Domain"] else [1, -1]
+            chosen_v = s_cols[i % 4].selectbox(
+                feat_name,
+                options=options,
+                index=options.index(extracted_v) if extracted_v in options else 0,
+                format_func=lambda x: "Legitimate (1)" if x == 1 else ("Suspicious (0)" if x == 0 else "Phishing (-1)"),
+                key=f"sbx_{feat_name}_{active_url}",
             )
-            st.plotly_chart(fig_gauge, use_container_width=True)
+            active_vector[i] = chosen_v
 
-            # Mini KPI row under gauge
-            k1, k2 = st.columns(2)
-            k1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Safe probability</div><div class="kpi-value" style="font-size: 18px; color: #81c784;">{(100-risk_pct):.1f}%</div></div>""", unsafe_allow_html=True)
-            k2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Inference time</div><div class="kpi-value" style="font-size: 18px; color: #FFFFFF;">0.8 ms</div></div>""", unsafe_allow_html=True)
+    # Run Explainer on active vector
+    scan_res = live_explainer.explain_instance(active_vector)
+    risk_pct = scan_res["phishing_probability"] * 100
+    is_malicious = risk_pct >= 50.0
 
-        with col_waterfall:
-            st.markdown("##### Shapley feature attribution")
-            st.caption("Game theoretic contribution (TreeSHAP) of each property to the prediction margin.")
+    # Verdict Card
+    card_class = "verdict-critical" if risk_pct >= 70 else ("verdict-warning" if risk_pct >= 50 else "verdict-safe")
+    verdict_title = "Phishing attack detected" if risk_pct >= 70 else ("Suspicious address pattern" if risk_pct >= 50 else "Legitimate domain structure")
+    verdict_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
 
-            drivers = scan_res["top_drivers"]
-            d_names = [d["feature"] for d in drivers][::-1]
-            d_vals = [d["shap_value"] for d in drivers][::-1]
-            d_colors = ["#c62828" if v > 0 else "#2e7d32" for v in d_vals]
-            d_texts = [f"{'+' if v > 0 else ''}{v:.3f}" for v in d_vals]
+    st.markdown(f"""
+    <div class="verdict-card {card_class}">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #9B9B9B; font-weight: 600;">Automated classification</div>
+                <div style="font-size: 22px; font-weight: 600; color: {verdict_color}; margin-top: 2px;">{verdict_title}</div>
+                <div style="font-size: 13px; color: #9B9B9B; margin-top: 4px;">Evaluated across eight offline lexical properties with zero network exposure.</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 11px; color: #9B9B9B; text-transform: uppercase;">Probability of phishing</div>
+                <div style="font-family: 'Geist Mono'; font-size: 28px; font-weight: 700; color: {verdict_color};">{risk_pct:.1f}%</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-            fig_bar = go.Figure(go.Bar(
-                x=d_vals,
-                y=d_names,
-                orientation="h",
-                marker=dict(color=d_colors),
-                text=d_texts,
-                textposition="outside",
-                textfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
-                hoverinfo="text",
-                hovertext=[f"{d['feature']}: {d['shap_value']:+.4f} ({d['human_text']})" for d in drivers][::-1],
-            ))
+    # Two-Column Visual Core: Gauge on Left, Waterfall on Right
+    col_gauge, col_waterfall = st.columns([2, 3])
 
-            fig_bar.update_layout(
-                paper_bgcolor="#000000",
-                plot_bgcolor="#181818",
-                margin=dict(l=10, r=36, t=10, b=24),
-                height=280,
-                xaxis=dict(
-                    title="Shapley value (log odds)",
-                    title_font=dict(family="Geist", size=11, color="#9B9B9B"),
-                    gridcolor="#272727",
-                    zerolinecolor="#313131",
-                    tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
-                ),
-                yaxis=dict(
-                    tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"),
-                    gridcolor="#000000",
-                ),
-            )
-            st.plotly_chart(fig_bar, use_container_width=True)
+    with col_gauge:
+        st.markdown("##### Threat risk gauge")
+        st.caption("Calibrated probability metric output by the lexical XGBoost classifier.")
 
-        # Counterfactual Recourse Guidance
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-        st.markdown("##### Actionable recourse insights")
-        st.caption("Smallest structural adjustments that reduce the malicious classification score.")
+        gauge_bar_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
 
-        if scan_res["counterfactual_hints"]:
-            for hint in scan_res["counterfactual_hints"]:
-                st.markdown(f"""
-                <div class="action-card">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="font-family: 'Geist Mono'; font-size: 13px; font-weight: 600; color: #FFFFFF;">{hint['feature']}</span>
-                        <span style="font-family: 'Geist Mono'; font-size: 12px; font-weight: 600; color: #81c784;">minus {hint['risk_reduction_pct']}% risk</span>
-                    </div>
-                    <div style="font-size: 12px; line-height: 18px; color: #9B9B9B;">{hint['guidance']}</div>
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=risk_pct,
+            number={"suffix": "%", "font": {"family": "Geist Mono", "size": 32, "color": "#FFFFFF"}},
+            gauge={
+                "axis": {"range": [0, 100], "tickcolor": "#9B9B9B", "tickwidth": 1, "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"}},
+                "bar": {"color": gauge_bar_color, "thickness": 0.28},
+                "bgcolor": "#1F1F1F",
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, 50], "color": "#181818"},
+                    {"range": [50, 70], "color": "#1F1F1F"},
+                    {"range": [70, 100], "color": "#272727"},
+                ],
+            }
+        ))
+
+        fig_gauge.update_layout(
+            paper_bgcolor="#000000",
+            plot_bgcolor="#000000",
+            margin=dict(l=20, r=20, t=20, b=10),
+            height=220,
+        )
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+        k1, k2 = st.columns(2)
+        k1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Safe probability</div><div class="kpi-value" style="font-size: 18px; color: #81c784;">{(100-risk_pct):.1f}%</div></div>""", unsafe_allow_html=True)
+        k2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Inference time</div><div class="kpi-value" style="font-size: 18px; color: #FFFFFF;">0.8 ms</div></div>""", unsafe_allow_html=True)
+
+    with col_waterfall:
+        st.markdown("##### Shapley feature attribution")
+        st.caption("Game theoretic contribution (TreeSHAP) of each property to the prediction margin.")
+
+        drivers = scan_res["top_drivers"]
+        d_names = [d["feature"] for d in drivers][::-1]
+        d_vals = [d["shap_value"] for d in drivers][::-1]
+        d_colors = ["#c62828" if v > 0 else "#2e7d32" for v in d_vals]
+        d_texts = [f"{'+' if v > 0 else ''}{v:.3f}" for v in d_vals]
+
+        fig_bar = go.Figure(go.Bar(
+            x=d_vals,
+            y=d_names,
+            orientation="h",
+            marker=dict(color=d_colors),
+            text=d_texts,
+            textposition="outside",
+            textfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
+            hoverinfo="text",
+            hovertext=[f"{d['feature']}: {d['shap_value']:+.4f} ({d['human_text']})" for d in drivers][::-1],
+        ))
+
+        fig_bar.update_layout(
+            paper_bgcolor="#000000",
+            plot_bgcolor="#181818",
+            margin=dict(l=10, r=36, t=10, b=24),
+            height=280,
+            xaxis=dict(
+                title="Shapley value (log odds)",
+                title_font=dict(family="Geist", size=11, color="#9B9B9B"),
+                gridcolor="#272727",
+                zerolinecolor="#313131",
+                tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
+            ),
+            yaxis=dict(
+                tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"),
+                gridcolor="#000000",
+            ),
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    # Actionable Recourse Guidance
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    st.markdown("##### Actionable recourse insights")
+    st.caption("Smallest structural adjustments that reduce the malicious classification score.")
+
+    if scan_res["counterfactual_hints"]:
+        for hint in scan_res["counterfactual_hints"]:
+            st.markdown(f"""
+            <div class="action-card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="font-family: 'Geist Mono'; font-size: 13px; font-weight: 600; color: #FFFFFF;">{hint['feature']}</span>
+                    <span style="font-family: 'Geist Mono'; font-size: 12px; font-weight: 600; color: #81c784;">minus {hint['risk_reduction_pct']}% risk</span>
                 </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="panel-sub">
-                <div style="font-size: 13px; font-weight: 600; color: #FFFFFF;">Clean baseline structure</div>
-                <div style="font-size: 12px; color: #9B9B9B; margin-top: 2px;">No structural changes required. All verified properties align with legitimate domain norms.</div>
+                <div style="font-size: 12px; line-height: 18px; color: #9B9B9B;">{hint['guidance']}</div>
             </div>
             """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="action-card">
+            <div style="font-size: 13px; font-weight: 600; color: #FFFFFF;">Clean baseline structure</div>
+            <div style="font-size: 12px; color: #9B9B9B; margin-top: 2px;">No structural changes required. All verified properties align with legitimate domain norms.</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # Detailed Factor Table
-        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
-        st.markdown("##### Complete diagnostic matrix")
-        records = []
-        for item in scan_res["all_features"]:
-            st_text = "Legitimate" if item["value"] == 1 else ("Suspicious" if item["value"] == 0 else "Phishing")
-            records.append({
-                "Property": item["feature"],
-                "State": st_text,
-                "Shapley impact": f"{item['shap_value']:+.4f}",
-                "Influence": item["pushes_toward"],
-                "Forensic explanation": item["human_text"],
-            })
-        st.dataframe(pd.DataFrame(records), use_container_width=True, hide_index=True)
+    # Diagnostic Table
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+    st.markdown("##### Complete diagnostic matrix")
+    records = []
+    for item in scan_res["all_features"]:
+        st_text = "Legitimate" if item["value"] == 1 else ("Suspicious" if item["value"] == 0 else "Phishing")
+        records.append({
+            "Property": item["feature"],
+            "State": st_text,
+            "Shapley impact": f"{item['shap_value']:+.4f}",
+            "Influence": item["pushes_toward"],
+            "Forensic explanation": item["human_text"],
+        })
+    st.dataframe(pd.DataFrame(records), use_container_width=True, hide_index=True)
 
 # -------------------------------------------------------------------
 # TAB 2: DATASET LAB
@@ -584,7 +681,7 @@ with tabs[1]:
     status_color = "#81c784" if match_success else "#e57373"
 
     st.markdown(f"""
-    <div class="panel" style="margin-top: 16px;">
+    <div class="verdict-card" style="border: 1px solid #272727; margin-top: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600;">UCI holdout record #{st.session_state['lab_row_idx']}</div>
@@ -660,7 +757,7 @@ with tabs[2]:
     ]
     st.dataframe(pd.DataFrame(perf_rows), use_container_width=True, hide_index=True)
 
-    # Mandatory Tagline Reveal Box
+    # Tagline Reveal Box
     st.markdown("""
     <div class="tagline-box">
         <div style="font-size: 24px; line-height: 30px; font-weight: 600; color: #FFFFFF;">
