@@ -294,8 +294,13 @@ st.markdown("""
         margin: 0 auto !important;
     }
 
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
+    /* Tabs Segmented Control */
+    [data-testid="stTabs"] {
+        width: 100% !important;
+    }
+
+    [data-testid="stTabs"] [data-baseweb="tab-list"],
+    [data-baseweb="tab-list"] {
         display: flex !important;
         width: 100% !important;
         background-color: #181818 !important;
@@ -304,9 +309,11 @@ st.markdown("""
         padding: 4px !important;
         gap: 6px !important;
         margin-bottom: 24px !important;
+        box-sizing: border-box !important;
     }
 
-    .stTabs [data-baseweb="tab"] {
+    [data-testid="stTabs"] [data-baseweb="tab"],
+    [data-baseweb="tab"] {
         flex: 1 1 0% !important;
         display: flex !important;
         justify-content: center !important;
@@ -322,9 +329,11 @@ st.markdown("""
         background-color: transparent !important;
         white-space: nowrap !important;
         transition: all 150ms ease !important;
+        box-sizing: border-box !important;
     }
 
-    .stTabs [data-baseweb="tab"] p {
+    [data-testid="stTabs"] [data-baseweb="tab"] *,
+    [data-baseweb="tab"] * {
         font-family: 'Geist', sans-serif !important;
         font-size: 14px !important;
         font-weight: inherit !important;
@@ -333,20 +342,28 @@ st.markdown("""
         padding: 0 !important;
     }
 
-    .stTabs [data-baseweb="tab"]:hover {
+    [data-testid="stTabs"] [data-baseweb="tab"]:hover,
+    [data-baseweb="tab"]:hover {
         color: #FFFFFF !important;
         background-color: #1F1F1F !important;
     }
 
-    .stTabs [aria-selected="true"] {
+    [data-testid="stTabs"] [data-baseweb="tab"][aria-selected="true"],
+    [data-baseweb="tab"][aria-selected="true"] {
         background-color: #272727 !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
     }
 
-    .stTabs [data-baseweb="tab-highlight"],
-    .stTabs [data-baseweb="tab-border"] {
+    [data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    [data-baseweb="tab-highlight"],
+    [data-testid="stTabs"] [data-baseweb="tab-border"],
+    [data-baseweb="tab-border"] {
         display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0px !important;
+        width: 0px !important;
     }
 
     /* Actionable Hint */
