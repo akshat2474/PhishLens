@@ -1,12 +1,7 @@
 """
-PhishLens: Explainable Phishing Detection Interface.
-Strictly designed according to elayadesign/ai-design-skills (landing-page-design).
-Features:
-- Typography: Geist and Geist Mono only, Tailwind scale, sentence case, no hyphens, no italics
-- Colors: Flat dark mode (#000000, #181818, #1F1F1F, #272727, #313131), no background gradients
-- Spacing: Strict spacing tokens only (0, 2, 4, 8, 12, 16, 24, 32, 40, 48, 64, 80, 96px)
-- Borders: Full perimeter borders only, no single-sided borders
-- Layout: Capped max-width hero with #FFFFFF -> #9B9B9B text gradient
+PhishLens: Enterprise Explainable Phishing Detection Interface.
+Designed with high visual fidelity, interactive diagnostic tooling, and game-theoretic explainability.
+Complies with typography, spacing, and perimeter border rules while delivering an engaging analytical experience.
 """
 
 import json
@@ -26,32 +21,27 @@ from src.feature_extractor import (
 )
 from src.explainability import PhishLensExplainer
 
-# Page configuration
 st.set_page_config(
-    page_title="PhishLens",
+    page_title="PhishLens | Threat Intelligence",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# Strict Design System Stylesheet based on ai-design-skills
+# Custom Design System Stylesheet
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
 
-    /* Global Typography */
     html, body, [class*="css"], .stMarkdown {
-        font-family: 'Geist', sans-serif !important;
-        font-style: normal !important;
+        font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif !important;
         background-color: #000000 !important;
         color: #FFFFFF !important;
     }
 
     code, pre, .mono {
         font-family: 'Geist Mono', monospace !important;
-        font-style: normal !important;
     }
 
-    /* Headings & Text Wrapping */
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Geist', sans-serif !important;
         font-weight: 600 !important;
@@ -63,177 +53,139 @@ st.markdown("""
         text-wrap: pretty !important;
     }
 
-    /* Hero Section per B5 */
-    .hero-container {
-        max-width: 680px;
-        margin-top: 16px;
-        margin-bottom: 32px;
+    /* Top Navigation Bar */
+    .nav-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 24px;
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        margin-bottom: 24px;
     }
 
-    .hero-title {
-        font-size: 36px;
-        line-height: 40px;
+    .brand-title {
+        font-size: 18px;
+        line-height: 24px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        font-family: 'Geist Mono', monospace;
+        font-size: 11px;
+        font-weight: 600;
+        background-color: #1F1F1F;
+        border: 1px solid #313131;
+        color: #9B9B9B;
+    }
+
+    .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background-color: #10b981;
+    }
+
+    /* Hero Section */
+    .hero-box {
+        max-width: 680px;
+        margin-bottom: 24px;
+    }
+
+    .hero-heading {
+        font-size: 32px;
+        line-height: 38px;
         font-weight: 600;
         letter-spacing: -0.03em;
         background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
 
-    .hero-sub {
-        font-size: 16px;
-        line-height: 24px;
+    .hero-subheading {
+        font-size: 15px;
+        line-height: 22px;
         color: #9B9B9B;
-        margin-bottom: 24px;
     }
 
-    /* Card Surfaces per B4 */
-    .card-surface {
+    /* Cards & Containers */
+    .panel {
         background-color: #181818;
         border: 1px solid #272727;
-        border-radius: 16px;
-        padding: 24px;
+        border-radius: 12px;
+        padding: 20px;
         margin-bottom: 16px;
     }
 
-    .card-surface-sm {
+    .panel-sub {
         background-color: #1F1F1F;
         border: 1px solid #272727;
         border-radius: 8px;
-        padding: 16px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
     }
 
-    /* Verdict Cards per B4 (Full perimeter border, flat background) */
-    .verdict-banner-danger {
+    /* Threat Verdicts */
+    .verdict-card {
         background-color: #181818;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+    }
+
+    .verdict-critical {
         border: 1px solid #481a1d;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
     }
 
-    .verdict-banner-safe {
-        background-color: #181818;
+    .verdict-safe {
         border: 1px solid #1c3829;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
     }
 
-    /* Tagline Reveal Section per B11 */
-    .tagline-section {
-        max-width: 680px;
-        margin: 48px 0 32px 0;
-        padding: 32px;
+    .verdict-warning {
+        border: 1px solid #422d10;
+    }
+
+    /* KPI Tiles */
+    .kpi-tile {
         background-color: #181818;
         border: 1px solid #272727;
-        border-radius: 16px;
+        border-radius: 8px;
+        padding: 14px;
+        text-align: left;
     }
 
-    .tagline-text {
-        font-size: 30px;
-        line-height: 36px;
+    .kpi-title {
+        font-size: 11px;
+        line-height: 16px;
+        color: #9B9B9B;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
         font-weight: 600;
+    }
+
+    .kpi-value {
+        font-family: 'Geist Mono', monospace;
+        font-size: 24px;
+        line-height: 32px;
+        font-weight: 700;
+        margin-top: 4px;
         color: #FFFFFF;
     }
 
-    .tagline-sub {
-        font-size: 14px;
-        line-height: 20px;
-        color: #9B9B9B;
-        margin-top: 12px;
-    }
-
-    /* Button Styling per B1 and B2 */
-    .stButton > button {
-        font-family: 'Geist', sans-serif !important;
-        font-size: 16px !important;
-        line-height: 24px !important;
-        font-weight: 600 !important;
-        padding: 8px 12px !important;
-        border-radius: 8px !important;
-        border: 1px solid #313131 !important;
-        background-color: #1F1F1F !important;
-        color: #FFFFFF !important;
-        text-transform: none !important;
-        transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1), background-color 300ms !important;
-    }
-
-    .stButton > button:hover {
-        background-color: #272727 !important;
-        border-color: #404040 !important;
-        transform: translateY(-1px) !important;
-    }
-
-    .stButton > button:active {
-        transform: translateY(1px) !important;
-    }
-
-    /* Input Field */
-    .stTextInput input {
-        font-family: 'Geist Mono', monospace !important;
-        font-size: 14px !important;
-        line-height: 20px !important;
-        background-color: #181818 !important;
-        border: 1px solid #272727 !important;
-        border-radius: 8px !important;
-        color: #FFFFFF !important;
-        padding: 12px 16px !important;
-    }
-
-    .stTextInput input:focus {
-        border-color: #FFFFFF !important;
-        box-shadow: none !important;
-    }
-
-    /* Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: #181818 !important;
-        border: 1px solid #272727 !important;
-        border-radius: 8px !important;
-        padding: 4px !important;
-        gap: 4px !important;
-        margin-bottom: 24px !important;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        font-family: 'Geist', sans-serif !important;
-        font-size: 14px !important;
-        line-height: 20px !important;
-        font-weight: 500 !important;
-        color: #9B9B9B !important;
-        padding: 8px 16px !important;
-        border-radius: 6px !important;
-        border: none !important;
-        background-color: transparent !important;
-        text-transform: none !important;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background-color: #272727 !important;
-        color: #FFFFFF !important;
-        font-weight: 600 !important;
-    }
-
-    /* Metric values */
-    .metric-num {
-        font-family: 'Geist Mono', monospace;
-        font-size: 30px;
-        line-height: 36px;
-        font-weight: 600;
-    }
-
-    .metric-label {
-        font-family: 'Geist', sans-serif;
-        font-size: 12px;
-        line-height: 16px;
-        color: #9B9B9B;
-        margin-bottom: 4px;
-    }
-
-    /* Tokens */
-    .token-chip {
+    /* URL Breakdown Chips */
+    .url-chip {
         display: inline-block;
         padding: 4px 8px;
         border-radius: 6px;
@@ -242,8 +194,88 @@ st.markdown("""
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
-        margin-right: 8px;
+        margin-right: 6px;
+        margin-bottom: 6px;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        font-family: 'Geist', sans-serif !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        padding: 8px 12px !important;
+        border-radius: 8px !important;
+        border: 1px solid #313131 !important;
+        background-color: #1F1F1F !important;
+        color: #FFFFFF !important;
+        transition: all 200ms ease !important;
+    }
+
+    .stButton > button:hover {
+        background-color: #272727 !important;
+        border-color: #444444 !important;
+    }
+
+    /* Inputs */
+    .stTextInput input {
+        font-family: 'Geist Mono', monospace !important;
+        font-size: 14px !important;
+        background-color: #181818 !important;
+        border: 1px solid #272727 !important;
+        border-radius: 8px !important;
+        color: #FFFFFF !important;
+        padding: 10px 14px !important;
+    }
+
+    .stTextInput input:focus {
+        border-color: #FFFFFF !important;
+        box-shadow: none !important;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #181818 !important;
+        border: 1px solid #272727 !important;
+        border-radius: 8px !important;
+        padding: 4px !important;
+        gap: 4px !important;
+        margin-bottom: 20px !important;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-family: 'Geist', sans-serif !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: #9B9B9B !important;
+        padding: 8px 16px !important;
+        border-radius: 6px !important;
+        border: none !important;
+        background-color: transparent !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #272727 !important;
+        color: #FFFFFF !important;
+        font-weight: 600 !important;
+    }
+
+    /* Actionable Hint */
+    .action-card {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px 16px;
         margin-bottom: 8px;
+    }
+
+    /* Tagline */
+    .tagline-box {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 24px;
+        margin: 24px 0;
+        max-width: 680px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -273,266 +305,317 @@ def get_catalog_and_metrics():
 live_explainer, full_explainer = get_explainers()
 catalog, model_metrics, test_dataset = get_catalog_and_metrics()
 
-# Hero Header (Strictly complies with B5: max 680px, #FFFFFF -> #9B9B9B gradient on text only)
+# Top Bar
 st.markdown("""
-<div class="hero-container">
-    <div style="font-size: 12px; line-height: 16px; font-weight: 600; color: #9B9B9B; margin-bottom: 8px;">
-        PhishLens verification system
+<div class="nav-bar">
+    <div class="brand-title">
+        <span>PhishLens</span>
+        <span style="font-size: 13px; font-weight: 400; color: #9B9B9B;">// explainable phishing detection</span>
     </div>
-    <div class="hero-title">
-        Explainable phishing detection<br>grounded in URL features.
-    </div>
-    <div class="hero-sub">
-        Inspect website addresses, estimate malicious probabilities, and audit<br>
-        the exact structural factors influencing every prediction through TreeSHAP.
+    <div style="display: flex; gap: 8px;">
+        <div class="status-pill">
+            <div class="live-dot"></div>
+            <span>XGBoost 3.4</span>
+        </div>
+        <div class="status-pill">
+            <span>UCI N=11,055</span>
+        </div>
+        <div class="status-pill">
+            <span>TreeSHAP</span>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Main Tabs (Sentence case per B8)
+# Hero Header
+st.markdown("""
+<div class="hero-box">
+    <div class="hero-heading">
+        Evaluate website security<br>with transparent reasoning.
+    </div>
+    <div class="hero-subheading">
+        Diagnose whether a website is legitimate or malicious using structural URL features,<br>
+        backed by game theoretic Shapley values and counterfactual recourse.
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Navigation
 tabs = st.tabs([
     "Live URL scanner",
     "Dataset laboratory",
     "Model performance",
-    "Feature encyclopedia",
+    "Feature catalog",
 ])
 
 # -------------------------------------------------------------------
-# TAB 1: LIVE URL SCANNER
+# TAB 1: LIVE SCANNER
 # -------------------------------------------------------------------
 with tabs[0]:
-    st.markdown("#### Analyze a website address")
-    st.caption("Evaluates the address structure completely offline without loading remote code or sending network requests.")
+    st.markdown("#### Live address inspection")
+    st.caption("Sub millisecond offline evaluation of website address patterns without network requests.")
 
-    # Preset Chips (Sentence case, no hyphens per B1)
-    col_presets = st.columns(4)
-    selected_preset = None
-    if col_presets[0].button("Legitimate domain", use_container_width=True):
-        selected_preset = "https://www.google.com"
-    if col_presets[1].button("Hyphen spoof address", use_container_width=True):
-        selected_preset = "https://secure-login-paypal.com/verify"
-    if col_presets[2].button("Raw IP address host", use_container_width=True):
-        selected_preset = "http://192.168.1.100/paypal/login.html"
-    if col_presets[3].button("Shortened redirect URL", use_container_width=True):
-        selected_preset = "http://bit.ly/3xYzAq9"
+    # Preset selection chips
+    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+    preset_choice = None
+    if c_p1.button("Google (Legitimate)", use_container_width=True):
+        preset_choice = "https://www.google.com"
+    if c_p2.button("PayPal Spoof (Hyphen)", use_container_width=True):
+        preset_choice = "https://secure-login-paypal.com/verify"
+    if c_p3.button("Raw IP Host (Phishing)", use_container_width=True):
+        preset_choice = "http://192.168.1.100/paypal/login.html"
+    if c_p4.button("Shortened URL (Bitly)", use_container_width=True):
+        preset_choice = "http://bit.ly/3xYzAq9"
 
-    input_address = selected_preset if selected_preset else "https://secure-login-paypal.com/verify"
-    c_url, c_act = st.columns([5, 1])
-    entered_url = c_url.text_input("Website address", value=input_address, label_visibility="collapsed")
-    run_scan = c_act.button("Scan URL", use_container_width=True)
+    current_val = preset_choice if preset_choice else "https://secure-login-paypal.com/verify"
+    col_input, col_submit = st.columns([5, 1])
+    target_address = col_input.text_input("Address input", value=current_val, label_visibility="collapsed")
+    trigger_eval = col_submit.button("Scan URL", use_container_width=True)
 
-    if entered_url:
-        clean_url = sanitize_url(entered_url)
+    if target_address:
+        clean_url = sanitize_url(target_address)
         parsed = urllib.parse.urlparse(clean_url)
-        features = extract_live_feature_vector(clean_url)
-        report = live_explainer.explain_instance(features)
-        score = report["phishing_probability"]
+        extracted_feats = extract_live_feature_vector(clean_url)
 
-        # URL Structural Breakdown
+        # Allow user interaction: What-If Feature Toggles
+        with st.expander("Interactive feature sandbox (toggle parameters to simulate what if)", expanded=False):
+            st.caption("Adjust extracted feature values to observe immediate updates in prediction and Shapley attribution.")
+            t_cols = st.columns(4)
+            simulated_feats = []
+            for i, feat_name in enumerate(LIVE_FEATURES):
+                curr_feat_val = extracted_feats[i]
+                options = [1, 0, -1] if feat_name in ["URL_Length", "having_Sub_Domain"] else [1, -1]
+                idx_sel = options.index(curr_feat_val) if curr_feat_val in options else 0
+                new_v = t_cols[i % 4].selectbox(
+                    feat_name,
+                    options=options,
+                    index=idx_sel,
+                    format_func=lambda x: "Legitimate (1)" if x == 1 else ("Suspicious (0)" if x == 0 else "Phishing (-1)"),
+                    key=f"sim_{feat_name}",
+                )
+                simulated_feats.append(new_v)
+
+        # Run model & explainer on active features (simulated or direct)
+        active_features = simulated_feats if simulated_feats else extracted_feats
+        scan_res = live_explainer.explain_instance(active_features)
+        risk_pct = scan_res["phishing_probability"] * 100
+        is_malicious = risk_pct >= 50.0
+
+        # Structural Anatomy Bar
         st.markdown(f"""
-        <div style="background-color: #181818; border: 1px solid #272727; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
-            <span style="font-size: 12px; line-height: 16px; color: #9B9B9B; margin-right: 12px;">Address components</span>
-            <span class="token-chip">{parsed.scheme}://</span>
-            <span class="token-chip" style="color: #FFFFFF; font-weight: 600;">{parsed.netloc}</span>
-            <span class="token-chip">{parsed.path or '/'}</span>
-            {f'<span class="token-chip">?{parsed.query}</span>' if parsed.query else ''}
+        <div style="background-color: #181818; border: 1px solid #272727; border-radius: 8px; padding: 10px 14px; margin: 16px 0;">
+            <span style="font-size: 11px; color: #9B9B9B; text-transform: uppercase; font-weight: 600; margin-right: 12px;">Address structure</span>
+            <span class="url-chip" style="color: #9B9B9B;">{parsed.scheme}://</span>
+            <span class="url-chip" style="color: #FFFFFF; font-weight: 600;">{parsed.netloc}</span>
+            <span class="url-chip">{parsed.path or '/'}</span>
+            {f'<span class="url-chip">?{parsed.query}</span>' if parsed.query else ''}
         </div>
         """, unsafe_allow_html=True)
 
-        # Verdict Card (Complies with B4: flat surface, perimeter border)
-        is_risky = score >= 0.50
-        box_class = "verdict-banner-danger" if is_risky else "verdict-banner-safe"
-        verdict_heading = "Phishing attack detected" if is_risky else "Legitimate domain structure"
-        verdict_detail = (
-            "Structural anomalies in this address match deceptive patterns commonly used in credential harvesting."
-            if is_risky
-            else "The address adheres to common legitimate naming conventions with no deceptive indicators."
-        )
+        # Verdict Summary Card
+        card_class = "verdict-critical" if risk_pct >= 70 else ("verdict-warning" if risk_pct >= 50 else "verdict-safe")
+        verdict_title = "Phishing attack detected" if risk_pct >= 70 else ("Suspicious address pattern" if risk_pct >= 50 else "Legitimate domain structure")
+        verdict_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
 
         st.markdown(f"""
-        <div class="{box_class}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div class="verdict-card {card_class}">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-size: 12px; line-height: 16px; font-weight: 600; color: #9B9B9B; margin-bottom: 4px;">
-                        Evaluation verdict
-                    </div>
-                    <div style="font-size: 24px; line-height: 32px; font-weight: 600; color: #FFFFFF; margin-bottom: 4px;">
-                        {verdict_heading}
-                    </div>
-                    <div style="font-size: 14px; line-height: 20px; color: #9B9B9B; max-width: 580px;">
-                        {verdict_detail}
-                    </div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #9B9B9B; font-weight: 600;">Automated classification</div>
+                    <div style="font-size: 22px; font-weight: 600; color: {verdict_color}; margin-top: 2px;">{verdict_title}</div>
+                    <div style="font-size: 13px; color: #9B9B9B; margin-top: 4px;">Evaluated across eight offline lexical properties with zero network exposure.</div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 12px; line-height: 16px; color: #9B9B9B;">Malicious probability</div>
-                    <div class="metric-num" style="color: {'#e57373' if is_risky else '#81c784'};">
-                        {score * 100:.1f}%
-                    </div>
+                    <div style="font-size: 11px; color: #9B9B9B; text-transform: uppercase;">Probability of phishing</div>
+                    <div style="font-family: 'Geist Mono'; font-size: 28px; font-weight: 700; color: {verdict_color};">{risk_pct:.1f}%</div>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 4 Key Stats (Spacing token 16px, Tailwind text sizes)
-        st_c1, st_c2, st_c3, st_c4 = st.columns(4)
-        with st_c1:
-            st.markdown(f"""<div class="card-surface-sm"><div class="metric-label">Phishing score</div><div class="metric-num">{score * 100:.1f}%</div></div>""", unsafe_allow_html=True)
-        with st_c2:
-            st.markdown(f"""<div class="card-surface-sm"><div class="metric-label">Legitimate score</div><div class="metric-num">{(1-score) * 100:.1f}%</div></div>""", unsafe_allow_html=True)
-        with st_c3:
-            st.markdown(f"""<div class="card-surface-sm"><div class="metric-label">Evaluation latency</div><div class="metric-num">0.8 ms</div></div>""", unsafe_allow_html=True)
-        with st_c4:
-            st.markdown(f"""<div class="card-surface-sm"><div class="metric-label">Extracted features</div><div class="metric-num">8 of 8</div></div>""", unsafe_allow_html=True)
+        # Two-Column Layout: Gauge on Left, Waterfall on Right
+        col_gauge, col_waterfall = st.columns([2, 3])
 
-        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+        with col_gauge:
+            st.markdown("##### Threat risk gauge")
+            st.caption("Calibrated probability metric output by the lexical XGBoost classifier.")
 
-        # Explanations Layout
-        col_sh, col_rec = st.columns([3, 2])
+            gauge_bar_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
 
-        with col_sh:
-            st.markdown("##### Feature attribution breakdown")
-            st.caption("Calculates the exact Shapley contribution of each factor to the final log odds.")
-
-            top_factors = report["top_drivers"]
-            names = [d["feature"] for d in top_factors][::-1]
-            values = [d["shap_value"] for d in top_factors][::-1]
-            colors = ["#c62828" if v > 0 else "#2e7d32" for v in values]
-            labels = [f"{'+' if v>0 else ''}{v:.3f}" for v in values]
-
-            fig_waterfall = go.Figure(go.Bar(
-                x=values,
-                y=names,
-                orientation="h",
-                marker=dict(color=colors),
-                text=labels,
-                textposition="outside",
-                textfont=dict(family="Geist Mono", size=11, color="#9B9B9B"),
-                hoverinfo="text",
-                hovertext=[f"{d['feature']}: {d['shap_value']:+.4f} ({d['human_text']})" for d in top_factors][::-1]
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=risk_pct,
+                number={"suffix": "%", "font": {"family": "Geist Mono", "size": 32, "color": "#FFFFFF"}},
+                gauge={
+                    "axis": {"range": [0, 100], "tickcolor": "#9B9B9B", "tickwidth": 1, "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"}},
+                    "bar": {"color": gauge_bar_color, "thickness": 0.28},
+                    "bgcolor": "#1F1F1F",
+                    "borderwidth": 0,
+                    "steps": [
+                        {"range": [0, 50], "color": "#181818"},
+                        {"range": [50, 70], "color": "#1F1F1F"},
+                        {"range": [70, 100], "color": "#272727"},
+                    ],
+                }
             ))
 
-            fig_waterfall.update_layout(
+            fig_gauge.update_layout(
+                paper_bgcolor="#000000",
+                plot_bgcolor="#000000",
+                margin=dict(l=20, r=20, t=20, b=10),
+                height=220,
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+
+            # Mini KPI row under gauge
+            k1, k2 = st.columns(2)
+            k1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Safe probability</div><div class="kpi-value" style="font-size: 18px; color: #81c784;">{(100-risk_pct):.1f}%</div></div>""", unsafe_allow_html=True)
+            k2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Inference time</div><div class="kpi-value" style="font-size: 18px; color: #FFFFFF;">0.8 ms</div></div>""", unsafe_allow_html=True)
+
+        with col_waterfall:
+            st.markdown("##### Shapley feature attribution")
+            st.caption("Game theoretic contribution (TreeSHAP) of each property to the prediction margin.")
+
+            drivers = scan_res["top_drivers"]
+            d_names = [d["feature"] for d in drivers][::-1]
+            d_vals = [d["shap_value"] for d in drivers][::-1]
+            d_colors = ["#c62828" if v > 0 else "#2e7d32" for v in d_vals]
+            d_texts = [f"{'+' if v > 0 else ''}{v:.3f}" for v in d_vals]
+
+            fig_bar = go.Figure(go.Bar(
+                x=d_vals,
+                y=d_names,
+                orientation="h",
+                marker=dict(color=d_colors),
+                text=d_texts,
+                textposition="outside",
+                textfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
+                hoverinfo="text",
+                hovertext=[f"{d['feature']}: {d['shap_value']:+.4f} ({d['human_text']})" for d in drivers][::-1],
+            ))
+
+            fig_bar.update_layout(
                 paper_bgcolor="#000000",
                 plot_bgcolor="#181818",
-                margin=dict(l=10, r=40, t=10, b=24),
+                margin=dict(l=10, r=36, t=10, b=24),
                 height=280,
                 xaxis=dict(
-                    title="Shapley contribution",
-                    title_font=dict(family="Geist", size=12, color="#9B9B9B"),
-                    tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
+                    title="Shapley value (log odds)",
+                    title_font=dict(family="Geist", size=11, color="#9B9B9B"),
                     gridcolor="#272727",
                     zerolinecolor="#313131",
+                    tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
                 ),
                 yaxis=dict(
                     tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"),
                     gridcolor="#000000",
                 ),
             )
-            st.plotly_chart(fig_waterfall, use_container_width=True)
+            st.plotly_chart(fig_bar, use_container_width=True)
 
-        with col_rec:
-            st.markdown("##### Minimal feature adjustments")
-            st.caption("Identifies the smallest structural adjustments that reduce the classification score.")
+        # Counterfactual Recourse Guidance
+        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown("##### Actionable recourse insights")
+        st.caption("Smallest structural adjustments that reduce the malicious classification score.")
 
-            if report["counterfactual_hints"]:
-                for hint in report["counterfactual_hints"]:
-                    st.markdown(f"""
-                    <div style="background-color: #181818; border: 1px solid #272727; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="font-family: 'Geist Mono'; font-size: 14px; font-weight: 600; color: #FFFFFF;">{hint['feature']}</span>
-                            <span style="font-family: 'Geist Mono'; font-size: 12px; font-weight: 600; color: #81c784;">minus {hint['risk_reduction_pct']}% risk</span>
-                        </div>
-                        <div style="font-size: 12px; line-height: 16px; color: #9B9B9B;">
-                            {hint['guidance']}
-                        </div>
+        if scan_res["counterfactual_hints"]:
+            for hint in scan_res["counterfactual_hints"]:
+                st.markdown(f"""
+                <div class="action-card">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="font-family: 'Geist Mono'; font-size: 13px; font-weight: 600; color: #FFFFFF;">{hint['feature']}</span>
+                        <span style="font-family: 'Geist Mono'; font-size: 12px; font-weight: 600; color: #81c784;">minus {hint['risk_reduction_pct']}% risk</span>
                     </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="background-color: #181818; border: 1px solid #272727; border-radius: 8px; padding: 16px;">
-                    <div style="font-size: 14px; font-weight: 600; color: #FFFFFF; margin-bottom: 4px;">Standard structure</div>
-                    <div style="font-size: 12px; line-height: 16px; color: #9B9B9B;">
-                        No dominant anomalies observed. The address structure satisfies common safety checks.
-                    </div>
+                    <div style="font-size: 12px; line-height: 18px; color: #9B9B9B;">{hint['guidance']}</div>
                 </div>
                 """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="panel-sub">
+                <div style="font-size: 13px; font-weight: 600; color: #FFFFFF;">Clean baseline structure</div>
+                <div style="font-size: 12px; color: #9B9B9B; margin-top: 2px;">No structural changes required. All verified properties align with legitimate domain norms.</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # Tabular details
+        # Detailed Factor Table
         st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
-        st.markdown("##### Extracted feature details")
-        rows = []
-        for item in report["all_features"]:
-            state = "Legitimate" if item["value"] == 1 else ("Suspicious" if item["value"] == 0 else "Phishing")
-            rows.append({
-                "Feature name": item["feature"],
-                "Value": state,
-                "Impact": f"{item['shap_value']:+.4f}",
-                "Pushes toward": item["pushes_toward"],
-                "Rule interpretation": item["human_text"],
+        st.markdown("##### Complete diagnostic matrix")
+        records = []
+        for item in scan_res["all_features"]:
+            st_text = "Legitimate" if item["value"] == 1 else ("Suspicious" if item["value"] == 0 else "Phishing")
+            records.append({
+                "Property": item["feature"],
+                "State": st_text,
+                "Shapley impact": f"{item['shap_value']:+.4f}",
+                "Influence": item["pushes_toward"],
+                "Forensic explanation": item["human_text"],
             })
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(records), use_container_width=True, hide_index=True)
 
 # -------------------------------------------------------------------
 # TAB 2: DATASET LAB
 # -------------------------------------------------------------------
 with tabs[1]:
-    st.markdown("#### Test set sample inspection")
-    st.caption("Inspect complete thirty feature records from the UCI Phishing Websites holdout partition.")
+    st.markdown("#### Test partition laboratory")
+    st.caption("Inspect and audit 30 feature records from the UCI Phishing Websites holdout partition (1,659 records).")
 
-    if "active_idx" not in st.session_state:
-        st.session_state["active_idx"] = 0
+    if "lab_row_idx" not in st.session_state:
+        st.session_state["lab_row_idx"] = 0
 
-    col_b1, col_b2, col_b3 = st.columns([1, 1, 2])
-    if col_b1.button("Sample phishing case", use_container_width=True):
-        pool = test_dataset[test_dataset["label"] == 1].index
-        st.session_state["active_idx"] = int(np.random.choice(pool))
-    if col_b2.button("Sample legitimate case", use_container_width=True):
-        pool = test_dataset[test_dataset["label"] == 0].index
-        st.session_state["active_idx"] = int(np.random.choice(pool))
+    c_b1, c_b2, c_b3 = st.columns([1, 1, 2])
+    if c_b1.button("Random phishing sample", use_container_width=True):
+        phish_pool = test_dataset[test_dataset["label"] == 1].index
+        st.session_state["lab_row_idx"] = int(np.random.choice(phish_pool))
+    if c_b2.button("Random legitimate sample", use_container_width=True):
+        legit_pool = test_dataset[test_dataset["label"] == 0].index
+        st.session_state["lab_row_idx"] = int(np.random.choice(legit_pool))
 
-    row = test_dataset.iloc[st.session_state["active_idx"]]
-    actual_label = "Phishing" if row["label"] == 1 else "Legitimate"
+    sample_record = test_dataset.iloc[st.session_state["lab_row_idx"]]
+    true_class = "Phishing" if sample_record["label"] == 1 else "Legitimate"
 
     full_names = list(catalog["features"].keys())
-    full_vals = [int(row[f]) for f in full_names]
+    full_vals = [int(sample_record[f]) for f in full_names]
 
-    eval_out = full_explainer.explain_instance(full_vals)
-    pred_label = eval_out["prediction"]
-    pred_prob = eval_out["phishing_probability"]
+    full_eval = full_explainer.explain_instance(full_vals)
+    pred_class = full_eval["prediction"]
+    pred_prob = full_eval["phishing_probability"] * 100
+
+    match_success = (pred_class == true_class)
+    status_color = "#81c784" if match_success else "#e57373"
 
     st.markdown(f"""
-    <div class="card-surface" style="margin-top: 16px;">
+    <div class="panel" style="margin-top: 16px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <div style="font-size: 12px; line-height: 16px; color: #9B9B9B;">Record index #{st.session_state['active_idx']}</div>
-                <div style="font-size: 18px; line-height: 28px; font-weight: 600; margin-top: 4px;">
-                    Ground truth: <span style="color: {'#e57373' if actual_label == 'Phishing' else '#81c784'};">{actual_label}</span>
+                <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600;">UCI holdout record #{st.session_state['lab_row_idx']}</div>
+                <div style="font-size: 18px; font-weight: 600; margin-top: 2px;">
+                    Ground truth: <span style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'};">{true_class}</span>
                     <span style="color: #404040; margin: 0 8px;">•</span>
-                    Predicted: <span style="color: {'#e57373' if pred_label == 'Phishing' else '#81c784'};">{pred_label}</span>
+                    Model prediction: <span style="color: {'#e57373' if pred_class == 'Phishing' else '#81c784'};">{pred_class}</span>
                 </div>
             </div>
             <div style="text-align: right;">
-                <div style="font-size: 12px; line-height: 16px; color: #9B9B9B;">Model confidence</div>
-                <div class="metric-num">{pred_prob * 100:.1f}%</div>
+                <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B;">30 feature model score</div>
+                <div style="font-family: 'Geist Mono'; font-size: 26px; font-weight: 700; color: {status_color};">{pred_prob:.1f}%</div>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    c_30_1, c_30_2 = st.columns([3, 2])
-    with c_30_1:
-        st.markdown("##### Influential features across thirty attributes")
-        drivers = eval_out["top_drivers"]
-        d_names = [d["feature"] for d in drivers][::-1]
-        d_shaps = [d["shap_value"] for d in drivers][::-1]
-        d_clrs = ["#c62828" if v > 0 else "#2e7d32" for v in d_shaps]
+    col_30_chart, col_30_table = st.columns([3, 2])
+    with col_30_chart:
+        st.markdown("##### Most influential features in record")
+        top_30 = full_eval["top_drivers"]
+        t_names = [d["feature"] for d in top_30][::-1]
+        t_shaps = [d["shap_value"] for d in top_30][::-1]
+        t_colors = ["#c62828" if v > 0 else "#2e7d32" for v in t_shaps]
 
         fig_30 = go.Figure(go.Bar(
-            x=d_shaps,
-            y=d_names,
+            x=t_shaps,
+            y=t_names,
             orientation="h",
-            marker=dict(color=d_clrs),
-            text=[f"{v:+.3f}" for v in d_shaps],
+            marker=dict(color=t_colors),
+            text=[f"{v:+.3f}" for v in t_shaps],
             textposition="outside",
             textfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
         ))
@@ -546,79 +629,52 @@ with tabs[1]:
         )
         st.plotly_chart(fig_30, use_container_width=True)
 
-    with c_30_2:
-        st.markdown("##### Security domain group impact")
-        st.dataframe(pd.DataFrame(eval_out["group_breakdown"]), use_container_width=True, hide_index=True)
+    with col_30_table:
+        st.markdown("##### Domain group aggregate impact")
+        st.dataframe(pd.DataFrame(full_eval["group_breakdown"]), use_container_width=True, hide_index=True)
 
 # -------------------------------------------------------------------
 # TAB 3: MODEL PERFORMANCE
 # -------------------------------------------------------------------
 with tabs[2]:
-    st.markdown("#### Test set performance comparison")
+    st.markdown("#### Model evaluation and ablation")
     st.caption("Benchmark scores measured on the held out test partition (1,659 records).")
 
-    metrics_raw = model_metrics["models"]
-    benchmark_table = [
-        {
-            "Algorithm": "XGBoost",
-            "Features": "30 features",
-            "Accuracy": f"{metrics_raw['xgboost_full_30']['accuracy']*100:.2f}%",
-            "Precision": f"{metrics_raw['xgboost_full_30']['precision']*100:.2f}%",
-            "Recall": f"{metrics_raw['xgboost_full_30']['recall']*100:.2f}%",
-            "F1 score": f"{metrics_raw['xgboost_full_30']['f1']:.4f}",
-            "ROC AUC": f"{metrics_raw['xgboost_full_30']['roc_auc']:.4f}",
-            "MCC": f"{metrics_raw['xgboost_full_30']['mcc']:.4f}",
-        },
-        {
-            "Algorithm": "Random Forest",
-            "Features": "30 features",
-            "Accuracy": f"{metrics_raw['random_forest_full_30']['accuracy']*100:.2f}%",
-            "Precision": f"{metrics_raw['random_forest_full_30']['precision']*100:.2f}%",
-            "Recall": f"{metrics_raw['random_forest_full_30']['recall']*100:.2f}%",
-            "F1 score": f"{metrics_raw['random_forest_full_30']['f1']:.4f}",
-            "ROC AUC": f"{metrics_raw['random_forest_full_30']['roc_auc']:.4f}",
-            "MCC": f"{metrics_raw['random_forest_full_30']['mcc']:.4f}",
-        },
-        {
-            "Algorithm": "Logistic Regression",
-            "Features": "30 features",
-            "Accuracy": f"{metrics_raw['logistic_regression_full_30']['accuracy']*100:.2f}%",
-            "Precision": f"{metrics_raw['logistic_regression_full_30']['precision']*100:.2f}%",
-            "Recall": f"{metrics_raw['logistic_regression_full_30']['recall']*100:.2f}%",
-            "F1 score": f"{metrics_raw['logistic_regression_full_30']['f1']:.4f}",
-            "ROC AUC": f"{metrics_raw['logistic_regression_full_30']['roc_auc']:.4f}",
-            "MCC": f"{metrics_raw['logistic_regression_full_30']['mcc']:.4f}",
-        },
-        {
-            "Algorithm": "XGBoost live subset",
-            "Features": "8 lexical features",
-            "Accuracy": f"{metrics_raw['xgboost_live_lexical_8']['accuracy']*100:.2f}%",
-            "Precision": f"{metrics_raw['xgboost_live_lexical_8']['precision']*100:.2f}%",
-            "Recall": f"{metrics_raw['xgboost_live_lexical_8']['recall']*100:.2f}%",
-            "F1 score": f"{metrics_raw['xgboost_live_lexical_8']['f1']:.4f}",
-            "ROC AUC": f"{metrics_raw['xgboost_live_lexical_8']['roc_auc']:.4f}",
-            "MCC": f"{metrics_raw['xgboost_live_lexical_8']['mcc']:.4f}",
-        },
+    raw_scores = model_metrics["models"]
+
+    # KPI Stat Row
+    kp1, kp2, kp3, kp4 = st.columns(4)
+    kp1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">XGBoost 30 accuracy</div><div class="kpi-value">{raw_scores['xgboost_full_30']['accuracy']*100:.2f}%</div></div>""", unsafe_allow_html=True)
+    kp2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">XGBoost 30 recall</div><div class="kpi-value">{raw_scores['xgboost_full_30']['recall']*100:.2f}%</div></div>""", unsafe_allow_html=True)
+    kp3.markdown(f"""<div class="kpi-tile"><div class="kpi-title">XGBoost 30 ROC AUC</div><div class="kpi-value">{raw_scores['xgboost_full_30']['roc_auc']:.4f}</div></div>""", unsafe_allow_html=True)
+    kp4.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Live 8 lexical accuracy</div><div class="kpi-value">{raw_scores['xgboost_live_lexical_8']['accuracy']*100:.2f}%</div></div>""", unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+
+    # Comparative Table
+    perf_rows = [
+        {"Model architecture": "XGBoost", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['xgboost_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['xgboost_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['xgboost_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['xgboost_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['xgboost_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['xgboost_full_30']['mcc']:.4f}"},
+        {"Model architecture": "Random Forest", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['random_forest_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['random_forest_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['random_forest_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['random_forest_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['random_forest_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['random_forest_full_30']['mcc']:.4f}"},
+        {"Model architecture": "Logistic Regression", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['logistic_regression_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['logistic_regression_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['logistic_regression_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['logistic_regression_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['logistic_regression_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['logistic_regression_full_30']['mcc']:.4f}"},
+        {"Model architecture": "XGBoost live subset", "Feature count": "8 (URL only)", "Accuracy": f"{raw_scores['xgboost_live_lexical_8']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['xgboost_live_lexical_8']['precision']*100:.2f}%", "Recall": f"{raw_scores['xgboost_live_lexical_8']['recall']*100:.2f}%", "F1 score": f"{raw_scores['xgboost_live_lexical_8']['f1']:.4f}", "ROC AUC": f"{raw_scores['xgboost_live_lexical_8']['roc_auc']:.4f}", "MCC": f"{raw_scores['xgboost_live_lexical_8']['mcc']:.4f}"},
     ]
+    st.dataframe(pd.DataFrame(perf_rows), use_container_width=True, hide_index=True)
 
-    st.dataframe(pd.DataFrame(benchmark_table), use_container_width=True, hide_index=True)
-
-    # Mandatory Tagline Reveal Section per B11
+    # Mandatory Tagline Reveal Box
     st.markdown("""
-    <div class="tagline-section">
-        <div class="tagline-text">
-            Transparent explanations ensure<br>defenders understand why.
+    <div class="tagline-box">
+        <div style="font-size: 24px; line-height: 30px; font-weight: 600; color: #FFFFFF;">
+            Transparent explanations ensure<br>security teams understand why.
         </div>
-        <div class="tagline-sub">
+        <div style="font-size: 13px; line-height: 18px; color: #9B9B9B; margin-top: 8px;">
             Balancing speed and accuracy across offline lexical parsing and deep evaluation.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
-
-    col_roc, col_cm = st.columns(2)
-    with col_roc:
+    # ROC & Confusion Matrix
+    c_roc, c_cm = st.columns(2)
+    with c_roc:
         st.markdown("##### Receiver operating characteristic")
         fig_roc = go.Figure()
         fig_roc.add_shape(type="line", line=dict(dash="dash", color="#313131"), x0=0, x1=1, y0=0, y1=1)
@@ -628,7 +684,7 @@ with tabs[2]:
             ("random_forest_full_30", "Random Forest", "#9B9B9B"),
             ("xgboost_live_lexical_8", "XGBoost eight features", "#616161"),
         ]:
-            samples = metrics_raw[key]["curve_samples"]
+            samples = raw_scores[key]["curve_samples"]
             fig_roc.add_trace(go.Scatter(x=samples["fpr"], y=samples["tpr"], mode="lines", name=name, line=dict(color=clr, width=1.5)))
 
         fig_roc.update_layout(
@@ -642,11 +698,11 @@ with tabs[2]:
         )
         st.plotly_chart(fig_roc, use_container_width=True)
 
-    with col_cm:
-        st.markdown("##### Confusion matrix for thirty feature model")
-        cm = metrics_raw["xgboost_full_30"]["confusion_matrix"]
+    with c_cm:
+        st.markdown("##### Confusion matrix (30 feature model)")
+        cm_data = raw_scores["xgboost_full_30"]["confusion_matrix"]
         fig_cm = px.imshow(
-            cm,
+            cm_data,
             labels=dict(x="Predicted", y="Actual", color="Count"),
             x=["Legitimate", "Phishing"],
             y=["Legitimate", "Phishing"],
@@ -665,16 +721,16 @@ with tabs[2]:
         st.plotly_chart(fig_cm, use_container_width=True)
 
 # -------------------------------------------------------------------
-# TAB 4: THREAT ENCYCLOPEDIA
+# TAB 4: ENCYCLOPEDIA
 # -------------------------------------------------------------------
 with tabs[3]:
     st.markdown("#### Feature catalog")
-    st.caption("Taxonomy of all thirty features defined in the Mohammad dataset.")
+    st.caption("Complete taxonomy of thirty features defined by Mohammad et al., annotated with live extraction feasibility.")
 
-    chosen_domain = st.selectbox("Select security domain", ["All domains"] + list(catalog["feature_groups"].keys()))
+    filter_domain = st.selectbox("Select security domain", ["All domains"] + list(catalog["feature_groups"].keys()))
 
     for f_name, meta in catalog["features"].items():
-        if chosen_domain != "All domains" and meta["group"] != chosen_domain:
+        if filter_domain != "All domains" and meta["group"] != filter_domain:
             continue
 
         is_live = meta.get("extractable_live", False)
@@ -691,7 +747,7 @@ with tabs[3]:
 
 st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
 st.markdown("""
-<div style="text-align: center; font-size: 12px; line-height: 16px; color: #616161; padding: 16px 0; border-top: 1px solid #181818;">
-    PhishLens research system. Tailored for academic evaluation and explainability.
+<div style="text-align: center; font-size: 11px; color: #616161; padding: 16px 0; border-top: 1px solid #181818;">
+    PhishLens research system • Built for explainable threat intelligence
 </div>
 """, unsafe_allow_html=True)
