@@ -121,25 +121,17 @@ st.markdown("""
     }
 
     /* Target URL Chosen Display Banner */
-    .chosen-url-card {
+    .chosen-url-inline {
         background-color: #181818;
         border: 1px solid #272727;
         border-radius: 8px;
-        padding: 8px 12px;
-        margin: 8px 0;
+        padding: 7px 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 12px;
-    }
-
-    .chosen-url-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        color: #9B9B9B;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        line-height: 12px;
+        min-height: 38px;
+        box-sizing: border-box;
     }
 
     .chosen-url-text {
@@ -147,8 +139,8 @@ st.markdown("""
         font-size: 13px;
         font-weight: 500;
         color: #FFFFFF;
-        margin-top: 2px;
         word-break: break-all;
+        margin: 0;
     }
 
     /* Anatomy Deck */
@@ -433,12 +425,9 @@ if st.session_state["scanner_mode"] == "Live URL input":
 
     # Prominently Display Chosen URL
     st.markdown(f"""
-    <div class="chosen-url-card">
-        <div>
-            <div class="chosen-url-label">Chosen target URL</div>
-            <div class="chosen-url-text">{clean_url}</div>
-        </div>
-        <div class="status-pill" style="color: #FFFFFF; border-color: #313131; font-size: 10px; padding: 2px 8px;">
+    <div class="chosen-url-inline" style="margin: 8px 0 12px 0;">
+        <span class="chosen-url-text">{clean_url}</span>
+        <div class="status-pill" style="color: #FFFFFF; border-color: #313131; font-size: 10px; padding: 2px 8px; flex-shrink: 0;">
             Live lexical input
         </div>
     </div>
@@ -633,11 +622,6 @@ if st.session_state["scanner_mode"] == "Live URL input":
 # BRANCH B: UCI BENCHMARK LABORATORY RECORD (30 FEATURES)
 # ===================================================================
 else:
-    # Sampling Control
-    if st.button("Pick random benchmark URL", use_container_width=True):
-        st.session_state["dataset_sample_idx"] = int(np.random.choice(test_dataset.index))
-        st.rerun()
-
     sample_record = test_dataset.iloc[st.session_state["dataset_sample_idx"]]
     true_class = "Phishing" if sample_record["label"] == 1 else "Legitimate"
     rep_url = synthesize_uci_representative_url(sample_record, st.session_state["dataset_sample_idx"])
@@ -645,14 +629,16 @@ else:
     full_names = list(catalog["features"].keys())
     full_vals = [int(sample_record[f]) for f in full_names]
 
-    # Prominently Display Chosen URL for this UCI Benchmark Record
-    st.markdown(f"""
-    <div class="chosen-url-card">
-        <div>
-            <div class="chosen-url-label">Chosen benchmark address</div>
-            <div class="chosen-url-text">{rep_url}</div>
-        </div>
-        <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131; font-size: 10px; padding: 2px 8px;">
+    # Single line control: Pick button on left, URL and ground truth badge on right
+    c_btn, c_url = st.columns([1, 4])
+    if c_btn.button("Pick random URL", use_container_width=True):
+        st.session_state["dataset_sample_idx"] = int(np.random.choice(test_dataset.index))
+        st.rerun()
+
+    c_url.markdown(f"""
+    <div class="chosen-url-inline">
+        <span class="chosen-url-text">{rep_url}</span>
+        <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131; font-size: 10px; padding: 2px 8px; flex-shrink: 0;">
             {true_class.upper()} GROUND TRUTH
         </div>
     </div>
