@@ -633,15 +633,9 @@ if st.session_state["scanner_mode"] == "Live URL input":
 # BRANCH B: UCI BENCHMARK LABORATORY RECORD (30 FEATURES)
 # ===================================================================
 else:
-    # Sampling Controls
-    c_ds1, c_ds2 = st.columns(2)
-    if c_ds1.button("Sample another phishing record", use_container_width=True):
-        phish_indices = test_dataset[test_dataset["label"] == 1].index
-        st.session_state["dataset_sample_idx"] = int(np.random.choice(phish_indices))
-        st.rerun()
-    if c_ds2.button("Sample another legitimate record", use_container_width=True):
-        legit_indices = test_dataset[test_dataset["label"] == 0].index
-        st.session_state["dataset_sample_idx"] = int(np.random.choice(legit_indices))
+    # Sampling Control
+    if st.button("Pick random benchmark URL", use_container_width=True):
+        st.session_state["dataset_sample_idx"] = int(np.random.choice(test_dataset.index))
         st.rerun()
 
     sample_record = test_dataset.iloc[st.session_state["dataset_sample_idx"]]
