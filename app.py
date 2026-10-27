@@ -368,18 +368,18 @@ def synthesize_uci_representative_url(row, idx):
 
     if is_phish:
         if has_ip:
-            return f"http://192.168.1.{100 + (idx % 150)}/login/paypal-update"
+            return f"http://192.168.1.{100 + (idx % 150)}/login/auth-test"
         if has_short:
-            return f"http://bit.ly/phish-sample-{idx}"
+            return f"http://bit.ly/test-sample-{idx}"
         if has_token:
-            return f"http://https-secure-account-{idx}.com/verify"
+            return f"http://https-secure-account-{idx}.org/verify"
         if has_hyphen and has_sub:
-            return f"https://security.login.paypal-verification-{idx}.com/auth"
+            return f"https://security.portal.account-verification-{idx}.org/auth"
         if has_hyphen:
-            return f"https://secure-login-account-{idx}.com/update"
+            return f"https://secure-login-account-{idx}.org/update"
         if has_sub:
-            return f"https://account.security.verification.domain-{idx}.com/login"
-        return f"http://suspicious-target-{idx}.net/credential-login"
+            return f"https://account.security.verification.domain-{idx}.org/login"
+        return f"http://suspicious-target-{idx}.net/test-login"
     else:
         domains = [
             "google.com", "github.com", "microsoft.com", "amazon.com",
@@ -391,28 +391,6 @@ def synthesize_uci_representative_url(row, idx):
 
 live_explainer, full_explainer = get_explainers()
 catalog, model_metrics, test_dataset = get_catalog_and_metrics()
-
-# Top Navigation Bar
-st.markdown("""
-<div class="nav-bar">
-    <div class="brand-title">
-        <span>PhishLens</span>
-        <span style="font-size: 13px; font-weight: 400; color: #9B9B9B;">// explainable threat intelligence</span>
-    </div>
-    <div style="display: flex; gap: 8px;">
-        <div class="status-pill">
-            <div class="live-dot"></div>
-            <span>XGBoost 3.4</span>
-        </div>
-        <div class="status-pill">
-            <span>UCI N=11,055</span>
-        </div>
-        <div class="status-pill">
-            <span>TreeSHAP</span>
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
 
 # Hero Header
 st.markdown("""
@@ -441,7 +419,7 @@ with tabs[0]:
     if "scanner_mode" not in st.session_state:
         st.session_state["scanner_mode"] = "Live URL input"
     if "target_url" not in st.session_state:
-        st.session_state["target_url"] = "https://secure-login-paypal.com/verify"
+        st.session_state["target_url"] = "https://secure-auth-verification.example.org/portal"
     if "dataset_sample_idx" not in st.session_state:
         st.session_state["dataset_sample_idx"] = 835
 
