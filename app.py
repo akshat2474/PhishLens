@@ -124,28 +124,30 @@ st.markdown("""
     .chosen-url-card {
         background-color: #181818;
         border: 1px solid #272727;
-        border-radius: 10px;
-        padding: 14px 18px;
-        margin: 14px 0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 8px 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 12px;
     }
 
     .chosen-url-label {
-        font-size: 11px;
+        font-size: 10px;
         text-transform: uppercase;
         color: #9B9B9B;
         font-weight: 600;
         letter-spacing: 0.05em;
+        line-height: 12px;
     }
 
     .chosen-url-text {
         font-family: 'Geist Mono', monospace;
-        font-size: 15px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 500;
         color: #FFFFFF;
-        margin-top: 3px;
+        margin-top: 2px;
         word-break: break-all;
     }
 
@@ -440,8 +442,8 @@ if st.session_state["scanner_mode"] == "Live URL input":
             <div class="chosen-url-label">Chosen target URL</div>
             <div class="chosen-url-text">{clean_url}</div>
         </div>
-        <div class="status-pill" style="color: #FFFFFF; border-color: #313131;">
-            Live Lexical Input
+        <div class="status-pill" style="color: #FFFFFF; border-color: #313131; font-size: 10px; padding: 2px 8px;">
+            Live lexical input
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -660,30 +662,14 @@ else:
             <div class="chosen-url-label">Chosen benchmark address</div>
             <div class="chosen-url-text">{rep_url}</div>
         </div>
-        <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131;">
+        <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131; font-size: 10px; padding: 2px 8px;">
             {true_class.upper()} GROUND TRUTH
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Interactive 30-feature editor inside laboratory
-    with st.expander("Interactive 30 feature value matrix (inspect and toggle)", expanded=False):
-        st.caption("You can modify individual feature values (-1 = Phishing, 0 = Suspicious, 1 = Legitimate) to test 30-feature model response.")
-        f_cols = st.columns(3)
-        active_full_vals = []
-        for i, feat in enumerate(full_names):
-            curr_val = full_vals[i]
-            new_v = f_cols[i % 3].selectbox(
-                feat,
-                options=[-1, 0, 1],
-                index=[-1, 0, 1].index(curr_val) if curr_val in [-1, 0, 1] else 2,
-                format_func=lambda x: "Legitimate (1)" if x == 1 else ("Suspicious (0)" if x == 0 else "Phishing (-1)"),
-                key=f"uci_{feat}_{st.session_state['dataset_sample_idx']}",
-            )
-            active_full_vals.append(new_v)
-
     # Run 30-feature full explainer
-    full_eval = full_explainer.explain_instance(active_full_vals)
+    full_eval = full_explainer.explain_instance(full_vals)
     pred_class = full_eval["prediction"]
     pred_prob = full_eval["phishing_probability"] * 100
 
