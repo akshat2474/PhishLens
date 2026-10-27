@@ -284,31 +284,69 @@ st.markdown("""
         box-shadow: none !important;
     }
 
+    /* Main Layout Spacing */
+    .main .block-container {
+        padding-top: 32px !important;
+        padding-bottom: 48px !important;
+        padding-left: 24px !important;
+        padding-right: 24px !important;
+        max-width: 1240px !important;
+        margin: 0 auto !important;
+    }
+
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
+        display: flex !important;
+        width: 100% !important;
         background-color: #181818 !important;
         border: 1px solid #272727 !important;
         border-radius: 8px !important;
         padding: 4px !important;
-        gap: 4px !important;
-        margin-bottom: 20px !important;
+        gap: 6px !important;
+        margin-bottom: 24px !important;
     }
 
     .stTabs [data-baseweb="tab"] {
+        flex: 1 1 0% !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        text-align: center !important;
         font-family: 'Geist', sans-serif !important;
-        font-size: 13px !important;
+        font-size: 14px !important;
         font-weight: 500 !important;
         color: #9B9B9B !important;
-        padding: 8px 16px !important;
+        padding: 10px 16px !important;
         border-radius: 6px !important;
         border: none !important;
         background-color: transparent !important;
+        white-space: nowrap !important;
+        transition: all 150ms ease !important;
+    }
+
+    .stTabs [data-baseweb="tab"] p {
+        font-family: 'Geist', sans-serif !important;
+        font-size: 14px !important;
+        font-weight: inherit !important;
+        color: inherit !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #FFFFFF !important;
+        background-color: #1F1F1F !important;
     }
 
     .stTabs [aria-selected="true"] {
         background-color: #272727 !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
+    }
+
+    .stTabs [data-baseweb="tab-highlight"],
+    .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
     }
 
     /* Actionable Hint */
@@ -660,8 +698,8 @@ with tabs[0]:
     # BRANCH B: UCI BENCHMARK LABORATORY RECORD (30 FEATURES)
     # ===================================================================
     else:
-        # Image 2 Controls: 3 Columns
-        c_ds1, c_ds2, c_ds3 = st.columns([2, 2, 2])
+        # Sampling Controls
+        c_ds1, c_ds2 = st.columns(2)
         if c_ds1.button("Sample another phishing record", use_container_width=True):
             phish_indices = test_dataset[test_dataset["label"] == 1].index
             st.session_state["dataset_sample_idx"] = int(np.random.choice(phish_indices))
@@ -670,11 +708,6 @@ with tabs[0]:
             legit_indices = test_dataset[test_dataset["label"] == 0].index
             st.session_state["dataset_sample_idx"] = int(np.random.choice(legit_indices))
             st.rerun()
-        c_ds3.markdown(f"""
-        <div style="font-family: 'Geist Mono'; font-size: 13px; padding: 8px 12px; background: #1F1F1F; border: 1px solid #272727; border-radius: 8px; text-align: center;">
-            UCI test record #{st.session_state['dataset_sample_idx']} (N=1,659)
-        </div>
-        """, unsafe_allow_html=True)
 
         sample_record = test_dataset.iloc[st.session_state["dataset_sample_idx"]]
         true_class = "Phishing" if sample_record["label"] == 1 else "Legitimate"
@@ -687,7 +720,7 @@ with tabs[0]:
         st.markdown(f"""
         <div class="chosen-url-card">
             <div>
-                <div class="chosen-url-label">Chosen benchmark address (Record #{st.session_state['dataset_sample_idx']})</div>
+                <div class="chosen-url-label">Chosen benchmark address</div>
                 <div class="chosen-url-text">{rep_url}</div>
             </div>
             <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131;">
@@ -724,7 +757,7 @@ with tabs[0]:
         <div class="verdict-card" style="border: 1px solid #272727; margin-top: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                    <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600;">UCI holdout record #{st.session_state['dataset_sample_idx']}</div>
+                    <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600;">Benchmark ground truth comparison</div>
                     <div style="font-size: 18px; font-weight: 600; margin-top: 2px;">
                         Ground truth: <span style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'};">{true_class}</span>
                         <span style="color: #404040; margin: 0 8px;">•</span>
