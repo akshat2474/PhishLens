@@ -120,38 +120,42 @@ st.markdown("""
         color: #9B9B9B;
     }
 
-    /* Scanner Console Frame */
-    .console-frame {
+    /* Target URL Chosen Display Banner */
+    .chosen-url-card {
         background-color: #181818;
         border: 1px solid #272727;
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 24px;
-    }
-
-    .console-header {
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin: 14px 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
     }
 
-    .console-tag {
-        font-family: 'Geist Mono', monospace;
+    .chosen-url-label {
         font-size: 11px;
         text-transform: uppercase;
         color: #9B9B9B;
-        letter-spacing: 0.08em;
         font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+
+    .chosen-url-text {
+        font-family: 'Geist Mono', monospace;
+        font-size: 15px;
+        font-weight: 600;
+        color: #FFFFFF;
+        margin-top: 3px;
+        word-break: break-all;
     }
 
     /* Anatomy Deck */
     .anatomy-deck {
-        background-color: #1F1F1F;
+        background-color: #181818;
         border: 1px solid #272727;
         border-radius: 12px;
         padding: 16px;
-        margin-top: 16px;
+        margin-bottom: 16px;
     }
 
     .anatomy-grid {
@@ -162,7 +166,7 @@ st.markdown("""
     }
 
     .anatomy-card {
-        background-color: #181818;
+        background-color: #1F1F1F;
         border: 1px solid #272727;
         border-radius: 8px;
         padding: 12px;
@@ -268,8 +272,8 @@ st.markdown("""
     .stTextInput input {
         font-family: 'Geist Mono', monospace !important;
         font-size: 14px !important;
-        background-color: #1F1F1F !important;
-        border: 1px solid #313131 !important;
+        background-color: #181818 !important;
+        border: 1px solid #272727 !important;
         border-radius: 8px !important;
         color: #FFFFFF !important;
         padding: 10px 14px !important;
@@ -350,6 +354,41 @@ def get_catalog_and_metrics():
     return catalog, metrics, test_df
 
 
+def synthesize_uci_representative_url(row, idx):
+    """
+    Constructs a realistic representative URL matching the structural properties
+    of a record in the UCI Phishing Websites dataset.
+    """
+    is_phish = (row["label"] == 1)
+    has_ip = (row.get("having_IP_Address", 1) == -1)
+    has_hyphen = (row.get("Prefix_Suffix", 1) == -1)
+    has_sub = (row.get("having_Sub_Domain", 1) == -1)
+    has_short = (row.get("Shortining_Service", 1) == -1)
+    has_token = (row.get("HTTPS_token", 1) == -1)
+
+    if is_phish:
+        if has_ip:
+            return f"http://192.168.1.{100 + (idx % 150)}/login/paypal-update"
+        if has_short:
+            return f"http://bit.ly/phish-sample-{idx}"
+        if has_token:
+            return f"http://https-secure-account-{idx}.com/verify"
+        if has_hyphen and has_sub:
+            return f"https://security.login.paypal-verification-{idx}.com/auth"
+        if has_hyphen:
+            return f"https://secure-login-account-{idx}.com/update"
+        if has_sub:
+            return f"https://account.security.verification.domain-{idx}.com/login"
+        return f"http://suspicious-target-{idx}.net/credential-login"
+    else:
+        domains = [
+            "google.com", "github.com", "microsoft.com", "amazon.com",
+            "wikipedia.org", "apple.com", "linkedin.com", "cloudflare.com"
+        ]
+        domain = domains[idx % len(domains)]
+        return f"https://www.{domain}/account/settings"
+
+
 live_explainer, full_explainer = get_explainers()
 catalog, model_metrics, test_dataset = get_catalog_and_metrics()
 
@@ -388,7 +427,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Navigation Tabs (Tab 2 merged into Tab 1)
+# Navigation Tabs
 tabs = st.tabs([
     "Live URL scanner and laboratory",
     "Model performance",
@@ -399,61 +438,15 @@ tabs = st.tabs([
 # TAB 1: LIVE URL SCANNER & DATASET LABORATORY
 # -------------------------------------------------------------------
 with tabs[0]:
-    # Manage session states
     if "scanner_mode" not in st.session_state:
         st.session_state["scanner_mode"] = "Live URL input"
     if "target_url" not in st.session_state:
         st.session_state["target_url"] = "https://secure-login-paypal.com/verify"
     if "dataset_sample_idx" not in st.session_state:
-        st.session_state["dataset_sample_idx"] = 0
+        st.session_state["dataset_sample_idx"] = 835
 
-    # Command Bar Frame
-    st.markdown("""
-    <div class="console-frame">
-        <div class="console-header">
-            <span class="console-tag">SECURITY SCANNER COMMAND BAR</span>
-            <span style="font-size: 12px; color: #9B9B9B;">Dual Engine • Live URL or UCI Benchmark Case</span>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 6 Preset Options: 4 Live URLs + 2 UCI Dataset Laboratory Samples
-    c_p1, c_p2, c_p3, c_p4, c_p5, c_p6 = st.columns(6)
-
-    if c_p1.button("Google (Clean)", use_container_width=True):
-        st.session_state["scanner_mode"] = "Live URL input"
-        st.session_state["target_url"] = "https://www.google.com"
-        st.rerun()
-
-    if c_p2.button("PayPal Spoof", use_container_width=True):
-        st.session_state["scanner_mode"] = "Live URL input"
-        st.session_state["target_url"] = "https://secure-login-paypal.com/verify"
-        st.rerun()
-
-    if c_p3.button("Raw IP Host", use_container_width=True):
-        st.session_state["scanner_mode"] = "Live URL input"
-        st.session_state["target_url"] = "http://192.168.1.100/paypal/login.html"
-        st.rerun()
-
-    if c_p4.button("Shortened URL", use_container_width=True):
-        st.session_state["scanner_mode"] = "Live URL input"
-        st.session_state["target_url"] = "http://bit.ly/3xYzAq9"
-        st.rerun()
-
-    if c_p5.button("UCI Phish Case", use_container_width=True):
-        st.session_state["scanner_mode"] = "UCI benchmark record"
-        phish_indices = test_dataset[test_dataset["label"] == 1].index
-        st.session_state["dataset_sample_idx"] = int(np.random.choice(phish_indices))
-        st.rerun()
-
-    if c_p6.button("UCI Legit Case", use_container_width=True):
-        st.session_state["scanner_mode"] = "UCI benchmark record"
-        legit_indices = test_dataset[test_dataset["label"] == 0].index
-        st.session_state["dataset_sample_idx"] = int(np.random.choice(legit_indices))
-        st.rerun()
-
-    # Source Toggle Switch
-    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
-    c_mode, c_info = st.columns([2, 4])
+    # Mode Toggle (Image 2 style)
+    c_mode, _ = st.columns([2, 3])
     selected_mode = c_mode.radio(
         "Inspection source",
         options=["Live URL input", "UCI benchmark record"],
@@ -481,35 +474,24 @@ with tabs[0]:
                 st.session_state["target_url"] = entered_text.strip()
                 st.rerun()
 
-    # Mode 2: UCI Dataset Laboratory Sample Loader
-    else:
-        c_ds1, c_ds2, c_ds3 = st.columns([2, 2, 2])
-        if c_ds1.button("Sample another phishing record", use_container_width=True):
-            phish_indices = test_dataset[test_dataset["label"] == 1].index
-            st.session_state["dataset_sample_idx"] = int(np.random.choice(phish_indices))
-            st.rerun()
-        if c_ds2.button("Sample another legitimate record", use_container_width=True):
-            legit_indices = test_dataset[test_dataset["label"] == 0].index
-            st.session_state["dataset_sample_idx"] = int(np.random.choice(legit_indices))
-            st.rerun()
-        c_ds3.markdown(f"""
-        <div style="font-family: 'Geist Mono'; font-size: 13px; padding: 8px 12px; background: #1F1F1F; border: 1px solid #272727; border-radius: 8px; text-align: center;">
-            UCI test record #{st.session_state['dataset_sample_idx']} (N=1,659)
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Close console frame
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # ===================================================================
-    # BRANCH A: LIVE URL INSPECTION
-    # ===================================================================
-    if st.session_state["scanner_mode"] == "Live URL input":
         active_url = st.session_state["target_url"]
         clean_url = sanitize_url(active_url)
         parsed = urllib.parse.urlparse(clean_url)
         raw_feats_dict = extract_live_lexical_features(clean_url)
         extracted_vector = [raw_feats_dict[f] for f in LIVE_FEATURES]
+
+        # Prominently Display Chosen URL
+        st.markdown(f"""
+        <div class="chosen-url-card">
+            <div>
+                <div class="chosen-url-label">Chosen target URL</div>
+                <div class="chosen-url-text">{clean_url}</div>
+            </div>
+            <div class="status-pill" style="color: #FFFFFF; border-color: #313131;">
+                Live Lexical Input
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Address Decomposition Deck
         st.markdown(f"""
@@ -700,11 +682,41 @@ with tabs[0]:
     # BRANCH B: UCI BENCHMARK LABORATORY RECORD (30 FEATURES)
     # ===================================================================
     else:
+        # Image 2 Controls: 3 Columns
+        c_ds1, c_ds2, c_ds3 = st.columns([2, 2, 2])
+        if c_ds1.button("Sample another phishing record", use_container_width=True):
+            phish_indices = test_dataset[test_dataset["label"] == 1].index
+            st.session_state["dataset_sample_idx"] = int(np.random.choice(phish_indices))
+            st.rerun()
+        if c_ds2.button("Sample another legitimate record", use_container_width=True):
+            legit_indices = test_dataset[test_dataset["label"] == 0].index
+            st.session_state["dataset_sample_idx"] = int(np.random.choice(legit_indices))
+            st.rerun()
+        c_ds3.markdown(f"""
+        <div style="font-family: 'Geist Mono'; font-size: 13px; padding: 8px 12px; background: #1F1F1F; border: 1px solid #272727; border-radius: 8px; text-align: center;">
+            UCI test record #{st.session_state['dataset_sample_idx']} (N=1,659)
+        </div>
+        """, unsafe_allow_html=True)
+
         sample_record = test_dataset.iloc[st.session_state["dataset_sample_idx"]]
         true_class = "Phishing" if sample_record["label"] == 1 else "Legitimate"
+        rep_url = synthesize_uci_representative_url(sample_record, st.session_state["dataset_sample_idx"])
 
         full_names = list(catalog["features"].keys())
         full_vals = [int(sample_record[f]) for f in full_names]
+
+        # Prominently Display Chosen URL for this UCI Benchmark Record
+        st.markdown(f"""
+        <div class="chosen-url-card">
+            <div>
+                <div class="chosen-url-label">Chosen benchmark address (Record #{st.session_state['dataset_sample_idx']})</div>
+                <div class="chosen-url-text">{rep_url}</div>
+            </div>
+            <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131;">
+                {true_class.upper()} GROUND TRUTH
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # Interactive 30-feature editor inside laboratory
         with st.expander("Interactive 30 feature value matrix (inspect and toggle)", expanded=False):
