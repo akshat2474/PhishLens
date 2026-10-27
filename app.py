@@ -249,17 +249,30 @@ st.markdown("""
         border-color: #444444 !important;
     }
 
-    /* Form Submit Button */
-    [data-testid="stFormSubmitButton"] > button {
+    /* Form Submit & Primary Action Buttons */
+    [data-testid="stFormSubmitButton"] > button,
+    [data-testid="stButton"] button[kind="primary"],
+    button[kind="primary"] {
         background-color: #FFFFFF !important;
         color: #000000 !important;
         border: 1px solid #FFFFFF !important;
         font-weight: 600 !important;
+        box-shadow: 0 0 16px rgba(255, 255, 255, 0.12) !important;
     }
 
-    [data-testid="stFormSubmitButton"] > button:hover {
-        background-color: #E0E0E0 !important;
-        border-color: #E0E0E0 !important;
+    [data-testid="stFormSubmitButton"] > button *,
+    [data-testid="stButton"] button[kind="primary"] *,
+    button[kind="primary"] * {
+        color: #000000 !important;
+        font-weight: 600 !important;
+    }
+
+    [data-testid="stFormSubmitButton"] > button:hover,
+    [data-testid="stButton"] button[kind="primary"]:hover,
+    button[kind="primary"]:hover {
+        background-color: #E6E6E6 !important;
+        border-color: #E6E6E6 !important;
+        box-shadow: 0 0 22px rgba(255, 255, 255, 0.22) !important;
     }
 
     /* Inputs */
@@ -630,8 +643,8 @@ else:
     full_vals = [int(sample_record[f]) for f in full_names]
 
     # Single line control: Pick button on left, URL and ground truth badge on right
-    c_btn, c_url = st.columns([1, 4])
-    if c_btn.button("Pick random URL", use_container_width=True):
+    c_btn, c_url = st.columns([1.2, 3.8])
+    if c_btn.button("Pick random URL", type="primary", use_container_width=True):
         st.session_state["dataset_sample_idx"] = int(np.random.choice(test_dataset.index))
         st.rerun()
 
