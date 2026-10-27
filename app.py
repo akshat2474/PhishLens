@@ -383,10 +383,6 @@ st.markdown("""
     <div class="hero-heading">
         Evaluate website security<br>with transparent reasoning.
     </div>
-    <div class="hero-subheading">
-        Diagnose whether a website is legitimate or malicious using structural URL features,<br>
-        backed by game theoretic Shapley values and counterfactual recourse.
-    </div>
 </div>
 """, unsafe_allow_html=True)
 
