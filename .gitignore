@@ -56,3 +56,6 @@ Thumbs.db
 
 # Data and Artifacts (large model weights / cache)
 *.log
+
+# Local agent skills
+.agents/
