@@ -33,7 +33,7 @@ PhishLens is designed around a dual pathway architecture that reconciles two con
     +-------------------------+                   +-------------------------+
     | XGBoost Live Classifier |                   | XGBoost Flagship Model  |
     | Latency < 1 millisecond |                   | Accuracy 96.87%         |
-    | Zero Network Footprint  |                   | ROC AUC 0.9944          |
+    | Zero Network Footprint  |                   | ROC AUC 0.9970          |
     +------------+------------+                   +------------+------------+
                  |                                             |
                  +----------------------+----------------------+
@@ -127,10 +127,10 @@ PhishLens implements and compares four distinct model architectures, each servin
 +-------------------------------------------------------------------------------------------------------------------------+
 | Architecture           | Input Scope  | Test Accuracy | Precision | Recall  | F1 Score | ROC AUC | Latency (Per URL)    |
 +------------------------+--------------+---------------+-----------+---------+----------+---------+----------------------+
-| Logistic Regression    | 30 Features  | 93.49%        | 93.97%    | 91.16%  | 0.9254   | 0.9808  | < 0.1 ms             |
-| Random Forest          | 30 Features  | 96.50%        | 97.34%    | 94.69%  | 0.9600   | 0.9961  | 1.8 ms               |
-| XGBoost Flagship       | 30 Features  | 96.87%        | 98.43%    | 94.56%  | 0.9645   | 0.9944  | 0.9 ms               |
-| XGBoost Live Lexical   | 8 Features   | 75.89%        | 73.19%    | 78.91%  | 0.7593   | 0.8329  | 0.2 ms (< 1ms total) |
+| Logistic Regression    | 30 Features  | 93.49%        | 93.97%    | 91.16%  | 0.9254   | 0.9808  | 0.04 ms              |
+| Random Forest          | 30 Features  | 96.50%        | 97.34%    | 94.69%  | 0.9600   | 0.9961  | 4.9 ms               |
+| XGBoost Flagship       | 30 Features  | 96.87%        | 96.84%    | 96.05%  | 0.9645   | 0.9970  | 0.09 ms              |
+| XGBoost Live Lexical   | 8 Features   | 75.89%        | 68.07%    | 85.85%  | 0.7593   | 0.8421  | 0.12 ms              |
 +------------------------+--------------+---------------+-----------+---------+----------+---------+----------------------+
 ```
 
@@ -217,7 +217,7 @@ $$w_j^* = -\frac{\sum_{i \in I_j} g_i}{\sum_{i \in I_j} h_i + \lambda}$$
 XGBoost is the state of the art algorithm for structured tabular data. Its combination of second order gradient approximation, algorithmic sparsity handling, and column subsampling makes it the premier choice for high assurance cybersecurity classifiers.
 
 #### Why It Performs The Way It Does (96.87% Accuracy)
-XGBoost achieves the highest accuracy (96.87%), highest precision (98.43%), and highest Matthews correlation coefficient (0.9370) in the entire benchmark suite. The sequential correction mechanism enables later trees to specialize in resolving ambiguous edge cases (for example, legitimate sites with expired certificates or sophisticated phishing clones hosted on reputable cloud platforms).
+XGBoost achieves the highest accuracy (96.87%), recall (96.05%), ROC AUC (0.9970), and Matthews correlation coefficient (0.9365) of the four models. Random Forest has the highest precision (97.34% versus 96.84%). The sequential correction mechanism enables later trees to specialize in resolving ambiguous edge cases (for example, legitimate sites with expired certificates or sophisticated phishing clones hosted on reputable cloud platforms).
 
 ---
 
@@ -236,17 +236,17 @@ The live lexical model uses the identical XGBoost gradient boosted decision tree
 
 #### Empirical Performance and Ablation Analysis
 - Test Accuracy: 75.89%
-- Test Precision: 73.19%
-- Test Recall: 78.91%
+- Test Precision: 68.07%
+- Test Recall: 85.85%
 - Test F1 Score: 0.7593
-- Test ROC AUC: 0.8329
-- Inference Latency: under 0.2 milliseconds (total lexical pipeline under 1 millisecond)
+- Test ROC AUC: 0.8421
+- Inference Latency (measured, single URL, one CPU thread): 0.12 ms for the model plus about 0.01 ms for feature extraction. A TreeSHAP explanation adds about 3.8 ms.
 
 #### Why There Is a 20.98% Accuracy Delta
-The drop from 96.87% to 75.89% accuracy is the quantifiable cost of zero network exposure:
+The drop from 96.87% to 75.89% accuracy is the measured cost of zero network exposure. The reasons below are our interpretation of that gap, not separately tested:
 - Attackers frequently register clean domain names without hyphens or excessive subdomains, placing their malicious payloads entirely in the page body or form actions. A pure lexical classifier cannot see page content.
 - Legitimate modern services frequently use subdomains and hyphens (for example, cloud infrastructure links and software as a service subdomains), creating natural overlap with phishing syntax.
-- The 75.89% accuracy is remarkably informative for a zero latency, zero network model. It correctly flags almost 8 out of 10 attacks without visiting the remote server.
+- The 75.89% accuracy is remarkably informative for a zero latency, zero network model. It catches about 86 of every 100 phishing URLs without visiting the remote server, but precision is only 68%: on the test split it wrongly flagged 296 of 924 legitimate URLs (a 32% false positive rate). This makes it a screening filter, not a blocking decision.
 
 ---
 
@@ -258,7 +258,7 @@ The drop from 96.87% to 75.89% accuracy is the quantifiable cost of zero network
 +----------------------------------------+------------------------+-----------------------------------------------------+
 | Inline Firewall Proxy / Gateway        | XGBoost Live (8 feat)  | Sub millisecond budget, zero socket exposure.       |
 | Browser Extension Pre Filter           | XGBoost Live (8 feat)  | Offline instant feedback before navigation begins.  |
-| Security Operations Center (SOC) Triage| XGBoost Flagship (30)  | Maximum precision (98.43%), full forensic evidence. |
+| Security Operations Center (SOC) Triage| XGBoost Flagship (30)  | Best accuracy and recall (96.87%, 96.05%), full forensic evidence. |
 | Incident Response Forensic Review      | XGBoost Flagship + SHAP| Local Shapley decomposition and attribution.        |
 | Resource Constrained Microcontroller   | Logistic Regression    | Minimal memory footprint, no tree structures.       |
 | Academic Methodology Baseline          | Random Forest (30 feat)| Variance baseline and de-correlated split study.    |
@@ -328,7 +328,7 @@ Where:
 - $L$ is the maximum number of leaves per tree ($2^6 = 64$).
 - $D$ is the maximum tree depth (6).
 
-This reduces calculation latency from several seconds to under ten milliseconds.
+In this project a full local explanation for the 8 feature model takes about 3.8 ms (measured).
 
 #### The Efficiency and Additivity Axiom
 TreeSHAP satisfies the additivity property, meaning the sum of all feature contributions equals the difference between the model output $f(x)$ and the baseline expected value $\mathbb{E}[f(X)]$:
