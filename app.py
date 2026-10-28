@@ -6,6 +6,7 @@ Complies with typography, spacing, and perimeter border rules while delivering a
 
 import json
 import os
+import time
 import urllib.parse
 import numpy as np
 import pandas as pd
@@ -20,6 +21,20 @@ from src.feature_extractor import (
     sanitize_url,
 )
 from src.explainability import PhishLensExplainer
+from src.ui_components import (
+    inject_result_styles,
+    render_results_body,
+    render_verdict,
+    risk_tone,
+    section_header,
+)
+
+VERDICT_TITLES = {
+    "critical": "Phishing attack detected",
+    "warning": "Suspicious address pattern",
+    "safe": "Legitimate domain structure",
+}
+STATE_LABELS = {1: "Legitimate", 0: "Suspicious", -1: "Phishing"}
 
 st.set_page_config(
     page_title="PhishLens | Threat Intelligence",
@@ -170,8 +185,6 @@ st.markdown("""
         font-size: 11px;
         line-height: 16px;
         color: #9B9B9B;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
     }
 
     .anatomy-val {
@@ -217,8 +230,6 @@ st.markdown("""
         font-size: 11px;
         line-height: 16px;
         color: #9B9B9B;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
         font-weight: 600;
     }
 
@@ -451,6 +462,7 @@ def synthesize_uci_representative_url(row, idx):
         return f"https://www.{domain}/account/settings"
 
 
+inject_result_styles()
 live_explainer, full_explainer = get_explainers()
 catalog, model_metrics, test_dataset = get_catalog_and_metrics()
 
@@ -505,7 +517,7 @@ with tabs[0]:
                 placeholder="Enter website address to inspect (e.g. https://...)",
                 label_visibility="collapsed",
             )
-            scan_submitted = c_btn.form_submit_button("Scan URL", use_container_width=True)
+            scan_submitted = c_btn.form_submit_button("Scan URL", width="stretch")
 
             if scan_submitted and entered_text.strip():
                 st.session_state["target_url"] = entered_text.strip()
@@ -530,8 +542,8 @@ with tabs[0]:
         # Address Decomposition Deck
         st.markdown(f"""
         <div class="anatomy-deck">
-            <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600; letter-spacing: 0.05em;">
-                Address Forensic Decomposition
+            <div style="font-size: 11px; color: #9B9B9B; font-weight: 600; letter-spacing: 0.05em;">
+                Address decomposition
             </div>
             <div class="anatomy-grid">
                 <div class="anatomy-card">
@@ -539,15 +551,15 @@ with tabs[0]:
                     <div class="anatomy-val" style="color: #9B9B9B;">{parsed.scheme or 'http'}://</div>
                 </div>
                 <div class="anatomy-card">
-                    <div class="anatomy-label">Registered Host</div>
+                    <div class="anatomy-label">Registered host</div>
                     <div class="anatomy-val" style="color: #FFFFFF;">{parsed.netloc}</div>
                 </div>
                 <div class="anatomy-card">
-                    <div class="anatomy-label">Path Destination</div>
+                    <div class="anatomy-label">Path destination</div>
                     <div class="anatomy-val" style="color: #9B9B9B;">{parsed.path or '/'}</div>
                 </div>
                 <div class="anatomy-card">
-                    <div class="anatomy-label">Length and Dots</div>
+                    <div class="anatomy-label">Length and dots</div>
                     <div class="anatomy-val">{len(clean_url)} chars • {parsed.netloc.count('.')} dots</div>
                 </div>
             </div>
@@ -571,146 +583,36 @@ with tabs[0]:
                 )
                 active_vector[i] = chosen_v
 
-        # Run Live Explainer
+        # Run live explainer and time the full explanation
+        started = time.perf_counter()
         scan_res = live_explainer.explain_instance(active_vector)
+        explain_ms = (time.perf_counter() - started) * 1000
         risk_pct = scan_res["phishing_probability"] * 100
 
-        # Verdict Card
-        card_class = "verdict-critical" if risk_pct >= 70 else ("verdict-warning" if risk_pct >= 50 else "verdict-safe")
-        verdict_title = "Phishing attack detected" if risk_pct >= 70 else ("Suspicious address pattern" if risk_pct >= 50 else "Legitimate domain structure")
-        verdict_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
+        render_verdict(
+            VERDICT_TITLES[risk_tone(risk_pct)],
+            "Evaluated across eight offline lexical properties with zero network exposure.",
+            risk_pct,
+        )
+        render_results_body(
+            scan_res, risk_pct,
+            ("Explanation time", f"{explain_ms:.1f} ms"),
+            "Probability from the lexical XGBoost classifier.",
+            "Contribution of each property to the prediction (TreeSHAP).",
+        )
 
-        st.markdown(f"""
-        <div class="verdict-card {card_class}">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #9B9B9B; font-weight: 600;">Automated classification</div>
-                    <div style="font-size: 22px; font-weight: 600; color: {verdict_color}; margin-top: 2px;">{verdict_title}</div>
-                    <div style="font-size: 13px; color: #9B9B9B; margin-top: 4px;">Evaluated across eight offline lexical properties with zero network exposure.</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 11px; color: #9B9B9B; text-transform: uppercase;">Probability of phishing</div>
-                    <div style="font-family: 'Geist Mono'; font-size: 28px; font-weight: 700; color: {verdict_color};">{risk_pct:.1f}%</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # 2-Column Core: Semicircle Gauge on Left, Waterfall on Right
-        col_gauge, col_waterfall = st.columns([2, 3])
-
-        with col_gauge:
-            st.markdown("##### Threat risk gauge")
-            st.caption("Calibrated probability metric output by the lexical XGBoost classifier.")
-
-            gauge_bar_color = "#e57373" if risk_pct >= 70 else ("#ffb74d" if risk_pct >= 50 else "#81c784")
-
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=risk_pct,
-                number={"suffix": "%", "font": {"family": "Geist Mono", "size": 32, "color": "#FFFFFF"}},
-                gauge={
-                    "axis": {"range": [0, 100], "tickcolor": "#9B9B9B", "tickwidth": 1, "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"}},
-                    "bar": {"color": gauge_bar_color, "thickness": 0.28},
-                    "bgcolor": "#1F1F1F",
-                    "borderwidth": 0,
-                    "steps": [
-                        {"range": [0, 50], "color": "#181818"},
-                        {"range": [50, 70], "color": "#1F1F1F"},
-                        {"range": [70, 100], "color": "#272727"},
-                    ],
-                }
-            ))
-            fig_gauge.update_layout(
-                paper_bgcolor="#000000",
-                plot_bgcolor="#000000",
-                margin=dict(l=20, r=20, t=20, b=10),
-                height=220,
-            )
-            st.plotly_chart(fig_gauge, use_container_width=True)
-
-            k1, k2 = st.columns(2)
-            k1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Safe probability</div><div class="kpi-value" style="font-size: 18px; color: #81c784;">{(100-risk_pct):.1f}%</div></div>""", unsafe_allow_html=True)
-            k2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Inference time</div><div class="kpi-value" style="font-size: 18px; color: #FFFFFF;">0.8 ms</div></div>""", unsafe_allow_html=True)
-
-        with col_waterfall:
-            st.markdown("##### Shapley feature attribution")
-            st.caption("Game theoretic contribution (TreeSHAP) of each property to the prediction margin.")
-
-            drivers = scan_res["top_drivers"]
-            d_names = [d["feature"] for d in drivers][::-1]
-            d_vals = [d["shap_value"] for d in drivers][::-1]
-            d_colors = ["#c62828" if v > 0 else "#2e7d32" for v in d_vals]
-            d_texts = [f"{'+' if v > 0 else ''}{v:.3f}" for v in d_vals]
-
-            fig_bar = go.Figure(go.Bar(
-                x=d_vals,
-                y=d_names,
-                orientation="h",
-                marker=dict(color=d_colors),
-                text=d_texts,
-                textposition="outside",
-                textfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
-                hoverinfo="text",
-                hovertext=[f"{d['feature']}: {d['shap_value']:+.4f} ({d['human_text']})" for d in drivers][::-1],
-            ))
-            fig_bar.update_layout(
-                paper_bgcolor="#000000",
-                plot_bgcolor="#181818",
-                margin=dict(l=10, r=36, t=10, b=24),
-                height=280,
-                xaxis=dict(
-                    title="Shapley value (log odds)",
-                    title_font=dict(family="Geist", size=11, color="#9B9B9B"),
-                    gridcolor="#272727",
-                    zerolinecolor="#313131",
-                    tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
-                ),
-                yaxis=dict(
-                    tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"),
-                    gridcolor="#000000",
-                ),
-            )
-            st.plotly_chart(fig_bar, use_container_width=True)
-
-        # Actionable Recourse Guidance
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-        st.markdown("##### Actionable recourse insights")
-        st.caption("Smallest structural adjustments that reduce the malicious classification score.")
-
-        if scan_res["counterfactual_hints"]:
-            for hint in scan_res["counterfactual_hints"]:
-                st.markdown(f"""
-                <div class="action-card">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="font-family: 'Geist Mono'; font-size: 13px; font-weight: 600; color: #FFFFFF;">{hint['feature']}</span>
-                        <span style="font-family: 'Geist Mono'; font-size: 12px; font-weight: 600; color: #81c784;">minus {hint['risk_reduction_pct']}% risk</span>
-                    </div>
-                    <div style="font-size: 12px; line-height: 18px; color: #9B9B9B;">{hint['guidance']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="action-card">
-                <div style="font-size: 13px; font-weight: 600; color: #FFFFFF;">Clean baseline structure</div>
-                <div style="font-size: 12px; color: #9B9B9B; margin-top: 2px;">No structural changes required. All verified properties align with legitimate domain norms.</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # Diagnostic Table
-        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
-        st.markdown("##### Complete diagnostic matrix")
-        records = []
-        for item in scan_res["all_features"]:
-            st_text = "Legitimate" if item["value"] == 1 else ("Suspicious" if item["value"] == 0 else "Phishing")
-            records.append({
+        section_header("Complete diagnostic matrix", "Every evaluated property with its state and Shapley impact.")
+        records = [
+            {
                 "Property": item["feature"],
-                "State": st_text,
+                "State": STATE_LABELS[item["value"]],
                 "Shapley impact": f"{item['shap_value']:+.4f}",
                 "Influence": item["pushes_toward"],
                 "Forensic explanation": item["human_text"],
-            })
-        st.dataframe(pd.DataFrame(records), use_container_width=True, hide_index=True)
+            }
+            for item in scan_res["all_features"]
+        ]
+        st.dataframe(pd.DataFrame(records), width="stretch", hide_index=True)
 
     # ===================================================================
     # BRANCH B: UCI BENCHMARK LABORATORY RECORD (30 FEATURES)
@@ -725,7 +627,7 @@ with tabs[0]:
 
         # Single line control: Pick button on left, URL and ground truth badge on right
         c_btn, c_url = st.columns([1.2, 3.8])
-        if c_btn.button("Pick random URL", type="primary", use_container_width=True):
+        if c_btn.button("Pick random URL", type="primary", width="stretch"):
             st.session_state["dataset_sample_idx"] = int(np.random.choice(test_dataset.index))
             st.rerun()
 
@@ -733,104 +635,34 @@ with tabs[0]:
         <div class="chosen-url-inline">
             <span class="chosen-url-text">{rep_url}</span>
             <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131; font-size: 10px; padding: 2px 8px; flex-shrink: 0;">
-                {true_class.upper()} GROUND TRUTH
+                Ground truth: {true_class.lower()}
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # Run 30-feature full explainer
+        # Run 30 feature explainer and time the full explanation
+        started = time.perf_counter()
         full_eval = full_explainer.explain_instance(full_vals)
+        explain_ms = (time.perf_counter() - started) * 1000
         pred_class = full_eval["prediction"]
-        pred_prob = full_eval["phishing_probability"] * 100
+        risk_pct = full_eval["phishing_probability"] * 100
+        agreement = "The prediction matches." if pred_class == true_class else "The prediction does not match."
 
-        match_success = (pred_class == true_class)
-        status_color = "#81c784" if match_success else "#e57373"
+        render_verdict(
+            f"Model predicts {pred_class.lower()}",
+            f"Ground truth is {true_class.lower()}. {agreement}",
+            risk_pct,
+        )
+        benchmark_accuracy = model_metrics["models"]["xgboost_full_30"]["accuracy"] * 100
+        render_results_body(
+            full_eval, risk_pct,
+            ("Benchmark accuracy", f"{benchmark_accuracy:.2f}%"),
+            "Probability from the 30 feature XGBoost model.",
+            "Contribution of each of the 30 attributes (TreeSHAP).",
+        )
 
-        st.markdown(f"""
-        <div class="verdict-card" style="border: 1px solid #272727; margin-top: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B; font-weight: 600;">Benchmark ground truth comparison</div>
-                    <div style="font-size: 18px; font-weight: 600; margin-top: 2px;">
-                        Ground truth: <span style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'};">{true_class}</span>
-                        <span style="color: #404040; margin: 0 8px;">•</span>
-                        Model prediction: <span style="color: {'#e57373' if pred_class == 'Phishing' else '#81c784'};">{pred_class}</span>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 11px; text-transform: uppercase; color: #9B9B9B;">Flagship 30 feature score</div>
-                    <div style="font-family: 'Geist Mono'; font-size: 26px; font-weight: 700; color: {status_color};">{pred_prob:.1f}%</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        col_30_gauge, col_30_waterfall = st.columns([2, 3])
-
-        with col_30_gauge:
-            st.markdown("##### Threat risk gauge (30 features)")
-            st.caption("Benchmark probability calculated across all thirty features.")
-
-            g_color = "#e57373" if pred_prob >= 70 else ("#ffb74d" if pred_prob >= 50 else "#81c784")
-
-            fig_30_g = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=pred_prob,
-                number={"suffix": "%", "font": {"family": "Geist Mono", "size": 32, "color": "#FFFFFF"}},
-                gauge={
-                    "axis": {"range": [0, 100], "tickcolor": "#9B9B9B", "tickwidth": 1, "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"}},
-                    "bar": {"color": g_color, "thickness": 0.28},
-                    "bgcolor": "#1F1F1F",
-                    "borderwidth": 0,
-                    "steps": [
-                        {"range": [0, 50], "color": "#181818"},
-                        {"range": [50, 70], "color": "#1F1F1F"},
-                        {"range": [70, 100], "color": "#272727"},
-                    ],
-                }
-            ))
-            fig_30_g.update_layout(
-                paper_bgcolor="#000000",
-                plot_bgcolor="#000000",
-                margin=dict(l=20, r=20, t=20, b=10),
-                height=220,
-            )
-            st.plotly_chart(fig_30_g, use_container_width=True)
-
-            k1, k2 = st.columns(2)
-            k1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Safe probability</div><div class="kpi-value" style="font-size: 18px; color: #81c784;">{(100-pred_prob):.1f}%</div></div>""", unsafe_allow_html=True)
-            k2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Benchmark accuracy</div><div class="kpi-value" style="font-size: 18px; color: #FFFFFF;">96.87%</div></div>""", unsafe_allow_html=True)
-
-        with col_30_waterfall:
-            st.markdown("##### Top contributing features (30 attributes)")
-            top_30 = full_eval["top_drivers"]
-            t_names = [d["feature"] for d in top_30][::-1]
-            t_shaps = [d["shap_value"] for d in top_30][::-1]
-            t_colors = ["#c62828" if v > 0 else "#2e7d32" for v in t_shaps]
-
-            fig_30_bar = go.Figure(go.Bar(
-                x=t_shaps,
-                y=t_names,
-                orientation="h",
-                marker=dict(color=t_colors),
-                text=[f"{v:+.3f}" for v in t_shaps],
-                textposition="outside",
-                textfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
-            ))
-            fig_30_bar.update_layout(
-                paper_bgcolor="#000000",
-                plot_bgcolor="#181818",
-                margin=dict(l=10, r=40, t=10, b=24),
-                height=260,
-                xaxis=dict(gridcolor="#272727", zerolinecolor="#313131", tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
-                yaxis=dict(tickfont=dict(family="Geist Mono", size=10, color="#FFFFFF")),
-            )
-            st.plotly_chart(fig_30_bar, use_container_width=True)
-
-        # Domain Group Breakdown
-        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
-        st.markdown("##### Security domain group aggregate impact")
-        st.dataframe(pd.DataFrame(full_eval["group_breakdown"]), use_container_width=True, hide_index=True)
+        section_header("Security domain impact", "Net Shapley contribution summed per feature domain.")
+        st.dataframe(pd.DataFrame(full_eval["group_breakdown"]), width="stretch", hide_index=True)
 
 # -------------------------------------------------------------------
 # TAB 2: MODEL EVALUATION AND ABLATION
@@ -857,7 +689,7 @@ with tabs[1]:
         {"Model architecture": "Logistic Regression", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['logistic_regression_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['logistic_regression_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['logistic_regression_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['logistic_regression_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['logistic_regression_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['logistic_regression_full_30']['mcc']:.4f}"},
         {"Model architecture": "XGBoost live subset", "Feature count": "8 (URL only)", "Accuracy": f"{raw_scores['xgboost_live_lexical_8']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['xgboost_live_lexical_8']['precision']*100:.2f}%", "Recall": f"{raw_scores['xgboost_live_lexical_8']['recall']*100:.2f}%", "F1 score": f"{raw_scores['xgboost_live_lexical_8']['f1']:.4f}", "ROC AUC": f"{raw_scores['xgboost_live_lexical_8']['roc_auc']:.4f}", "MCC": f"{raw_scores['xgboost_live_lexical_8']['mcc']:.4f}"},
     ]
-    st.dataframe(pd.DataFrame(perf_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(perf_rows), width="stretch", hide_index=True)
 
     # Tagline Reveal Box
     st.markdown("""
@@ -895,7 +727,7 @@ with tabs[1]:
             yaxis=dict(title="True positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
             legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95, font=dict(family="Geist", size=10, color="#9B9B9B")),
         )
-        st.plotly_chart(fig_roc, use_container_width=True)
+        st.plotly_chart(fig_roc, width="stretch")
 
     with c_cm:
         st.markdown("##### Confusion matrix (30 feature model)")
@@ -917,7 +749,7 @@ with tabs[1]:
             xaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),
             yaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),
         )
-        st.plotly_chart(fig_cm, use_container_width=True)
+        st.plotly_chart(fig_cm, width="stretch")
 
 # -------------------------------------------------------------------
 # TAB 3: FEATURE CATALOG
