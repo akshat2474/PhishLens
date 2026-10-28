@@ -28,6 +28,10 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+## Documentation
+
+A comprehensive guide explaining system mechanics, mathematical formulations, model selection rationale, and TreeSHAP implementations is available in [MODEL_GUIDE.md](file:///Users/akshat/Desktop/Stuff/ML_Proj/MODEL_GUIDE.md).
+
 ## Running Tests
 
 ```bash
