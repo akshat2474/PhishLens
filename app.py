@@ -24,6 +24,7 @@ from src.explainability import PhishLensExplainer
 from src.ui_components import (
     inject_result_styles,
     render_results_body,
+    render_segmented_token_rail,
     render_verdict,
     risk_tone,
     section_header,
@@ -120,58 +121,6 @@ st.markdown("""
         color: #FFFFFF;
         word-break: break-all;
         margin: 0;
-    }
-
-    /* Anatomy Deck */
-    .anatomy-deck {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 24px;
-    }
-
-    .anatomy-title {
-        font-size: 12px;
-        line-height: 16px;
-        color: #9B9B9B;
-        font-weight: 600;
-        margin-bottom: 12px;
-    }
-
-    .anatomy-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-    }
-
-    @media (max-width: 768px) {
-        .anatomy-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    .anatomy-card {
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 12px;
-    }
-
-    .anatomy-label {
-        font-size: 11px;
-        line-height: 16px;
-        color: #9B9B9B;
-    }
-
-    .anatomy-val {
-        font-family: 'Geist Mono', monospace;
-        font-size: 13px;
-        line-height: 20px;
-        color: #FFFFFF;
-        font-weight: 500;
-        margin-top: 2px;
-        word-break: break-all;
     }
 
     /* KPI Tiles */
@@ -388,39 +337,45 @@ def get_catalog_and_metrics():
     return catalog, metrics, test_df
 
 
-def synthesize_uci_representative_url(row, idx):
-    """
-    Constructs a realistic representative URL matching the structural properties
-    of a record in the UCI Phishing Websites dataset.
-    """
-    is_phish = (row["label"] == 1)
-    has_ip = (row.get("having_IP_Address", 1) == -1)
-    has_hyphen = (row.get("Prefix_Suffix", 1) == -1)
-    has_sub = (row.get("having_Sub_Domain", 1) == -1)
-    has_short = (row.get("Shortining_Service", 1) == -1)
-    has_token = (row.get("HTTPS_token", 1) == -1)
+def _synthesize_legitimate_url(idx):
+    """Generates a representative legitimate domain URL."""
+    domains = [
+        "google.com", "github.com", "microsoft.com", "amazon.com",
+        "wikipedia.org", "apple.com", "linkedin.com", "cloudflare.com"
+    ]
+    domain = domains[idx % len(domains)]
+    return f"https://www.{domain}/account/settings"
 
-    if is_phish:
-        if has_ip:
-            return f"http://192.168.1.{100 + (idx % 150)}/login/auth-test"
-        if has_short:
-            return f"http://bit.ly/test-sample-{idx}"
-        if has_token:
-            return f"http://https-secure-account-{idx}.org/verify"
-        if has_hyphen and has_sub:
-            return f"https://security.portal.account-verification-{idx}.org/auth"
-        if has_hyphen:
-            return f"https://secure-login-account-{idx}.org/update"
-        if has_sub:
-            return f"https://account.security.verification.domain-{idx}.org/login"
-        return f"http://suspicious-target-{idx}.net/test-login"
-    else:
-        domains = [
-            "google.com", "github.com", "microsoft.com", "amazon.com",
-            "wikipedia.org", "apple.com", "linkedin.com", "cloudflare.com"
-        ]
-        domain = domains[idx % len(domains)]
-        return f"https://www.{domain}/account/settings"
+
+def _synthesize_domain_phishing_url(row, idx):
+    """Generates a synthetic domain phishing URL based on structural anomalies."""
+    has_hyphen = row.get("Prefix_Suffix", 1) == -1
+    has_sub = row.get("having_Sub_Domain", 1) == -1
+    if has_hyphen and has_sub:
+        return f"https://security.portal.account-verification-{idx}.org/auth"
+    if has_hyphen:
+        return f"https://secure-login-account-{idx}.org/update"
+    if has_sub:
+        return f"https://account.security.verification.domain-{idx}.org/login"
+    return f"http://suspicious-target-{idx}.net/test-login"
+
+
+def _synthesize_phishing_url(row, idx):
+    """Generates a synthetic attack URL demonstrating matched phishing anomalies."""
+    if row.get("having_IP_Address", 1) == -1:
+        return f"http://192.168.1.{100 + (idx % 150)}/login/auth-test"
+    if row.get("Shortining_Service", 1) == -1:
+        return f"http://bit.ly/test-sample-{idx}"
+    if row.get("HTTPS_token", 1) == -1:
+        return f"http://https-secure-account-{idx}.org/verify"
+    return _synthesize_domain_phishing_url(row, idx)
+
+
+def synthesize_uci_representative_url(row, idx):
+    """Constructs a realistic representative URL matching UCI dataset record properties."""
+    if row.get("label", 0) == 1:
+        return _synthesize_phishing_url(row, idx)
+    return _synthesize_legitimate_url(idx)
 
 
 inject_result_styles()
@@ -500,33 +455,6 @@ with tabs[0]:
         </div>
         """, unsafe_allow_html=True)
 
-        # Address Decomposition Deck
-        st.markdown(f"""
-        <div class="anatomy-deck">
-            <div class="anatomy-title">
-                Address decomposition
-            </div>
-            <div class="anatomy-grid">
-                <div class="anatomy-card">
-                    <div class="anatomy-label">Scheme</div>
-                    <div class="anatomy-val" style="color: #9B9B9B;">{parsed.scheme or 'http'}://</div>
-                </div>
-                <div class="anatomy-card">
-                    <div class="anatomy-label">Registered host</div>
-                    <div class="anatomy-val">{parsed.netloc}</div>
-                </div>
-                <div class="anatomy-card">
-                    <div class="anatomy-label">Path destination</div>
-                    <div class="anatomy-val" style="color: #9B9B9B;">{parsed.path or '/'}</div>
-                </div>
-                <div class="anatomy-card">
-                    <div class="anatomy-label">Length and dots</div>
-                    <div class="anatomy-val">{len(clean_url)} chars • {parsed.netloc.count('.')} dots</div>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
         # Interactive Feature Sandbox Expander
         with st.expander("Interactive feature sandbox (toggle parameters to test what if)", expanded=False):
             st.caption("Toggle individual extracted properties below to test model sensitivity and recalculate Shapley values.")
@@ -555,6 +483,7 @@ with tabs[0]:
             "Evaluated across eight offline lexical properties with zero network exposure.",
             risk_pct,
         )
+        render_segmented_token_rail(clean_url, scan_res)
         render_results_body(
             scan_res, risk_pct,
             ("Explanation time", f"{explain_ms:.1f} ms"),
@@ -614,6 +543,7 @@ with tabs[0]:
             f"Ground truth is {true_class.lower()}. {agreement}",
             risk_pct,
         )
+        render_segmented_token_rail(rep_url, full_eval)
         benchmark_accuracy = model_metrics["models"]["xgboost_full_30"]["accuracy"] * 100
         render_results_body(
             full_eval, risk_pct,
