@@ -68,48 +68,18 @@ st.markdown("""
         text-wrap: pretty !important;
     }
 
-    /* Top Navigation Bar */
-    .nav-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 24px;
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        margin-bottom: 24px;
-    }
-
-    .brand-title {
-        font-size: 18px;
-        line-height: 24px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        color: #FFFFFF;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
+    /* Status Metadata Chip */
     .status-pill {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 9999px;
+        padding: 4px 8px;
+        border-radius: 4px;
         font-family: 'Geist Mono', monospace;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         background-color: #1F1F1F;
-        border: 1px solid #313131;
+        border: 1px solid #272727;
         color: #9B9B9B;
-    }
-
-    .live-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background-color: #10b981;
     }
 
     /* Hero Section */
@@ -120,19 +90,14 @@ st.markdown("""
 
     .hero-heading {
         font-size: 32px;
-        line-height: 38px;
+        line-height: 40px;
         font-weight: 600;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.02em;
         background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        text-wrap: balance;
         margin-bottom: 8px;
-    }
-
-    .hero-subheading {
-        font-size: 15px;
-        line-height: 22px;
-        color: #9B9B9B;
     }
 
     /* Target URL Chosen Display Banner */
@@ -140,12 +105,11 @@ st.markdown("""
         background-color: #181818;
         border: 1px solid #272727;
         border-radius: 8px;
-        padding: 7px 12px;
+        padding: 8px 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 12px;
-        min-height: 38px;
         box-sizing: border-box;
     }
 
@@ -164,14 +128,27 @@ st.markdown("""
         border: 1px solid #272727;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 24px;
+    }
+
+    .anatomy-title {
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        font-weight: 600;
+        margin-bottom: 12px;
     }
 
     .anatomy-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(4, 1fr);
         gap: 12px;
-        margin-top: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .anatomy-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 
     .anatomy-card {
@@ -190,44 +167,24 @@ st.markdown("""
     .anatomy-val {
         font-family: 'Geist Mono', monospace;
         font-size: 13px;
-        line-height: 18px;
+        line-height: 20px;
         color: #FFFFFF;
-        font-weight: 600;
+        font-weight: 500;
         margin-top: 2px;
         word-break: break-all;
-    }
-
-    /* Verdict Card */
-    .verdict-card {
-        background-color: #181818;
-        border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 20px;
-    }
-
-    .verdict-critical {
-        border: 1px solid #481a1d;
-    }
-
-    .verdict-safe {
-        border: 1px solid #1c3829;
-    }
-
-    .verdict-warning {
-        border: 1px solid #422d10;
     }
 
     /* KPI Tiles */
     .kpi-tile {
         background-color: #181818;
         border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 14px;
+        border-radius: 12px;
+        padding: 16px;
         text-align: left;
     }
 
     .kpi-title {
-        font-size: 11px;
+        font-size: 12px;
         line-height: 16px;
         color: #9B9B9B;
         font-weight: 600;
@@ -237,7 +194,8 @@ st.markdown("""
         font-family: 'Geist Mono', monospace;
         font-size: 24px;
         line-height: 32px;
-        font-weight: 700;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
         margin-top: 4px;
         color: #FFFFFF;
     }
@@ -252,7 +210,7 @@ st.markdown("""
         border: 1px solid #313131 !important;
         background-color: #1F1F1F !important;
         color: #FFFFFF !important;
-        transition: all 200ms ease !important;
+        transition: background-color 150ms ease, border-color 150ms ease !important;
     }
 
     .stButton > button:hover {
@@ -267,8 +225,10 @@ st.markdown("""
         background-color: #FFFFFF !important;
         color: #000000 !important;
         border: 1px solid #FFFFFF !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
         font-weight: 600 !important;
-        box-shadow: 0 0 16px rgba(255, 255, 255, 0.12) !important;
+        box-shadow: none !important;
     }
 
     [data-testid="stFormSubmitButton"] > button *,
@@ -283,7 +243,8 @@ st.markdown("""
     button[kind="primary"]:hover {
         background-color: #E6E6E6 !important;
         border-color: #E6E6E6 !important;
-        box-shadow: 0 0 22px rgba(255, 255, 255, 0.22) !important;
+        color: #000000 !important;
+        box-shadow: none !important;
     }
 
     /* Inputs */
@@ -542,7 +503,7 @@ with tabs[0]:
         # Address Decomposition Deck
         st.markdown(f"""
         <div class="anatomy-deck">
-            <div style="font-size: 11px; color: #9B9B9B; font-weight: 600; letter-spacing: 0.05em;">
+            <div class="anatomy-title">
                 Address decomposition
             </div>
             <div class="anatomy-grid">
@@ -552,7 +513,7 @@ with tabs[0]:
                 </div>
                 <div class="anatomy-card">
                     <div class="anatomy-label">Registered host</div>
-                    <div class="anatomy-val" style="color: #FFFFFF;">{parsed.netloc}</div>
+                    <div class="anatomy-val">{parsed.netloc}</div>
                 </div>
                 <div class="anatomy-card">
                     <div class="anatomy-label">Path destination</div>
@@ -691,19 +652,8 @@ with tabs[1]:
     ]
     st.dataframe(pd.DataFrame(perf_rows), width="stretch", hide_index=True)
 
-    # Tagline Reveal Box
-    st.markdown("""
-    <div class="tagline-box">
-        <div style="font-size: 24px; line-height: 30px; font-weight: 600; color: #FFFFFF;">
-            Transparent explanations ensure<br>security teams understand why.
-        </div>
-        <div style="font-size: 13px; line-height: 18px; color: #9B9B9B; margin-top: 8px;">
-            Balancing speed and accuracy across offline lexical parsing and deep evaluation.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
     # ROC & Confusion Matrix
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
     c_roc, c_cm = st.columns(2)
     with c_roc:
         st.markdown("##### Receiver operating characteristic")
@@ -719,9 +669,9 @@ with tabs[1]:
             fig_roc.add_trace(go.Scatter(x=samples["fpr"], y=samples["tpr"], mode="lines", name=name, line=dict(color=clr, width=1.5)))
 
         fig_roc.update_layout(
-            paper_bgcolor="#000000",
+            paper_bgcolor="#181818",
             plot_bgcolor="#181818",
-            margin=dict(l=10, r=10, t=10, b=24),
+            margin=dict(l=16, r=16, t=16, b=24),
             height=280,
             xaxis=dict(title="False positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
             yaxis=dict(title="True positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
@@ -738,12 +688,12 @@ with tabs[1]:
             x=["Legitimate", "Phishing"],
             y=["Legitimate", "Phishing"],
             text_auto=True,
-            color_continuous_scale=[[0, "#181818"], [1, "#313131"]],
+            color_continuous_scale=[[0, "#1F1F1F"], [1, "#313131"]],
         )
         fig_cm.update_layout(
-            paper_bgcolor="#000000",
+            paper_bgcolor="#181818",
             plot_bgcolor="#181818",
-            margin=dict(l=10, r=10, t=10, b=24),
+            margin=dict(l=16, r=16, t=16, b=24),
             height=280,
             coloraxis_showscale=False,
             xaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),

@@ -12,27 +12,142 @@ SAFE_COLOR = "#2e7d32"
 EVIDENCE_LIMIT = 3
 
 RESULT_CSS = """
-    .verdict-card { padding: 24px; margin-bottom: 24px; }
-    .verdict-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
-    .verdict-eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 16px; color: #9B9B9B; font-weight: 600; }
-    .verdict-dot { width: 8px; height: 8px; border-radius: 9999px; }
-    .verdict-title { font-size: 24px; line-height: 32px; font-weight: 600; margin-top: 4px; }
-    .verdict-sub { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-top: 4px; max-width: 520px; }
-    .verdict-score { text-align: right; flex-shrink: 0; }
-    .verdict-score-label { font-size: 12px; line-height: 16px; color: #9B9B9B; }
-    .verdict-score-value { font-family: 'Geist Mono', monospace; font-size: 36px; line-height: 40px; font-weight: 700; }
-    .verdict-track { height: 8px; border-radius: 9999px; background-color: #272727; margin-top: 24px; overflow: hidden; }
-    .verdict-fill { height: 100%; border-radius: 9999px; }
-    .evidence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-    .evidence-card { background-color: #181818; border: 1px solid #272727; border-radius: 12px; padding: 16px; }
-    .evidence-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .evidence-name { font-family: 'Geist Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 600; word-break: break-all; }
-    .evidence-pill { font-size: 12px; line-height: 16px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; border: 1px solid #313131; background-color: #1F1F1F; flex-shrink: 0; }
-    .evidence-value { font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #9B9B9B; margin-top: 8px; }
-    .evidence-text { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-top: 8px; }
-    .section-title { font-size: 18px; line-height: 28px; font-weight: 600; margin: 0 0 4px 0; }
-    .section-note { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-bottom: 16px; }
-    @media (max-width: 900px) { .evidence-grid { grid-template-columns: 1fr; } }
+    .verdict-card {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .verdict-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+    }
+    .verdict-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        font-weight: 600;
+    }
+    .verdict-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 2px;
+    }
+    .verdict-title {
+        font-size: 24px;
+        line-height: 32px;
+        font-weight: 600;
+        margin-top: 4px;
+        text-wrap: balance;
+    }
+    .verdict-sub {
+        font-size: 14px;
+        line-height: 20px;
+        color: #9B9B9B;
+        margin-top: 4px;
+        max-width: 520px;
+        text-wrap: pretty;
+    }
+    .verdict-score {
+        text-align: right;
+        flex-shrink: 0;
+    }
+    .verdict-score-label {
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+    }
+    .verdict-score-value {
+        font-family: 'Geist Mono', monospace;
+        font-size: 32px;
+        line-height: 40px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+    .verdict-track {
+        height: 6px;
+        border-radius: 4px;
+        background-color: #272727;
+        margin-top: 24px;
+        overflow: hidden;
+    }
+    .verdict-fill {
+        height: 100%;
+        border-radius: 4px;
+    }
+    .evidence-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .evidence-card {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 16px;
+    }
+    .evidence-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+    .evidence-name {
+        font-family: 'Geist Mono', monospace;
+        font-size: 13px;
+        line-height: 20px;
+        font-weight: 600;
+        word-break: break-all;
+    }
+    .evidence-pill {
+        font-family: 'Geist Mono', monospace;
+        font-size: 11px;
+        line-height: 16px;
+        font-weight: 500;
+        padding: 2px 8px;
+        border-radius: 4px;
+        border: 1px solid #272727;
+        background-color: #1F1F1F;
+        flex-shrink: 0;
+    }
+    .evidence-value {
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        margin-top: 8px;
+    }
+    .evidence-text {
+        font-size: 13px;
+        line-height: 20px;
+        color: #9B9B9B;
+        margin-top: 8px;
+        text-wrap: pretty;
+    }
+    .section-title {
+        font-size: 18px;
+        line-height: 28px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        text-wrap: balance;
+    }
+    .section-note {
+        font-size: 14px;
+        line-height: 20px;
+        color: #9B9B9B;
+        margin-bottom: 16px;
+        text-wrap: pretty;
+    }
+    @media (max-width: 900px) {
+        .evidence-grid { grid-template-columns: 1fr; }
+    }
 """
 
 
@@ -63,7 +178,7 @@ def kpi_tile(title, value, color="#FFFFFF"):
     """Renders a small labelled metric tile."""
     return (
         f'<div class="kpi-tile"><div class="kpi-title">{title}</div>'
-        f'<div class="kpi-value" style="font-size: 20px; color: {color};">{value}</div></div>'
+        f'<div class="kpi-value" style="color: {color};">{value}</div></div>'
     )
 
 
@@ -73,7 +188,7 @@ def render_verdict(title, subtitle, risk_pct):
     color = TONE_COLORS[tone]
     st.markdown(
         f"""
-        <div class="verdict-card verdict-{tone}">
+        <div class="verdict-card">
             <div class="verdict-top">
                 <div>
                     <div class="verdict-eyebrow">
@@ -98,32 +213,40 @@ def render_verdict(title, subtitle, risk_pct):
 
 
 def build_gauge_figure(risk_pct):
-    """Builds the semicircle risk gauge."""
+    """Builds the semicircle risk gauge with container-matched background."""
     color = TONE_COLORS[risk_tone(risk_pct)]
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=risk_pct,
         number={"suffix": "%", "font": {"family": "Geist Mono", "size": 32, "color": "#FFFFFF"}},
         gauge={
-            "axis": {"range": [0, 100], "tickcolor": "#9B9B9B", "tickwidth": 1,
-                     "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"}},
-            "bar": {"color": color, "thickness": 0.28},
+            "axis": {
+                "range": [0, 100],
+                "tickcolor": "#9B9B9B",
+                "tickwidth": 1,
+                "tickfont": {"family": "Geist Mono", "size": 10, "color": "#9B9B9B"},
+            },
+            "bar": {"color": color, "thickness": 0.24},
             "bgcolor": "#1F1F1F",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 50], "color": "#181818"},
-                {"range": [50, 70], "color": "#1F1F1F"},
-                {"range": [70, 100], "color": "#272727"},
+                {"range": [0, 50], "color": "#1F1F1F"},
+                {"range": [50, 70], "color": "#272727"},
+                {"range": [70, 100], "color": "#313131"},
             ],
         },
     ))
-    fig.update_layout(paper_bgcolor="#000000", plot_bgcolor="#000000",
-                      margin=dict(l=24, r=24, t=16, b=8), height=220)
+    fig.update_layout(
+        paper_bgcolor="#181818",
+        plot_bgcolor="#181818",
+        margin=dict(l=16, r=16, t=20, b=10),
+        height=200,
+    )
     return fig
 
 
 def build_attribution_figure(drivers):
-    """Builds the horizontal Shapley attribution bar chart for the top drivers."""
+    """Builds the horizontal Shapley attribution bar chart with container-matched background."""
     ordered = drivers[::-1]
     values = [d["shap_value"] for d in ordered]
     fig = go.Figure(go.Bar(
@@ -138,13 +261,21 @@ def build_attribution_figure(drivers):
         hovertext=[f"{d['feature']}: {d['shap_value']:+.4f} ({d['human_text']})" for d in ordered],
     ))
     fig.update_layout(
-        paper_bgcolor="#000000", plot_bgcolor="#181818",
-        margin=dict(l=8, r=40, t=8, b=32), height=300,
-        xaxis=dict(title="Shapley value (log odds)",
-                   title_font=dict(family="Geist", size=11, color="#9B9B9B"),
-                   gridcolor="#272727", zerolinecolor="#313131",
-                   tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
-        yaxis=dict(tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"), gridcolor="#000000"),
+        paper_bgcolor="#181818",
+        plot_bgcolor="#181818",
+        margin=dict(l=8, r=36, t=8, b=24),
+        height=280,
+        xaxis=dict(
+            title="Shapley value (log odds)",
+            title_font=dict(family="Geist", size=11, color="#9B9B9B"),
+            gridcolor="#272727",
+            zerolinecolor="#313131",
+            tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B"),
+        ),
+        yaxis=dict(
+            tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"),
+            gridcolor="#181818",
+        ),
     )
     return fig
 
