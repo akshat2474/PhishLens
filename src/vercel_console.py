@@ -1022,6 +1022,7 @@ PAGE_CSS = """
         color: #9B9B9B;
         padding: 32px 0 0 0;
     }
+    .attr-extra-row { display: grid; }
     .attr-extra-hidden { display: none !important; }
 
 
@@ -1577,25 +1578,42 @@ def _specimen_segments(tokens, cells):
     return [(txt, s) for txt, s in candidates if txt]
 
 
+def _format_specimen_span(seg, shap_val):
+    """Formats a single syntax-highlighted URL segment with its SHAP delta."""
+    tone, _, delta = _token_tone_and_delta(shap_val)
+    return (
+        f'<span class="specimen-token" style="color: {tone};">'
+        f'{html.escape(seg)}<span class="specimen-delta">{delta}</span></span>'
+    )
+
+
+def _format_anatomy_cell(title, val, feat, shap_val):
+    """Formats one URL anatomy cell inside the 5-column token strip."""
+    tone, _, delta = _token_tone_and_delta(shap_val)
+    return (
+        f'<div class="h-cell"><div class="cell-label">{html.escape(title)}</div>'
+        f'<div class="rail-val">{html.escape(val)}</div>'
+        f'<div class="rail-badge"><span style="color: #9B9B9B;">{html.escape(feat)}</span> '
+        f'<span style="color: {tone};">{delta}</span></div></div>'
+    )
+
+
+def _format_recourse_section(hints):
+    """Formats up to two counterfactual recourse chips or a clean baseline note."""
+    if not hints:
+        return '<div class="recourse-clean">No structural risks flagged across evaluated features.</div>'
+    chips = "".join(_format_recourse_chip(h) for h in hints[:2])
+    return f'<div class="recourse-stack">{chips}</div>'
+
+
 def _render_anatomy_card(url, result):
     """Renders syntax-highlighted URL specimen, 5 token cells, and top recourse chips."""
     tokens = _parse_url_tokens(url)
     shaps = {d["feature"]: d["shap_value"] for d in result["all_features"]}
     cells = _resolve_rail_cells(tokens, shaps)
-    spans = _build_specimen_spans(tokens, cells)
-    boxes = "".join(
-        f'<div class="h-cell"><div class="cell-label">{html.escape(t)}</div>'
-        f'<div class="rail-val">{html.escape(v)}</div>'
-        f'<div class="rail-badge"><span style="color: #9B9B9B;">{html.escape(f)}</span> '
-        f'<span style="color: {_token_tone_and_delta(s)[0]};">{_token_tone_and_delta(s)[2]}</span></div></div>'
-        for t, v, f, s in cells
-    )
-    hints = result.get("counterfactual_hints") or []
-    recourse_html = (
-        f'<div class="recourse-stack">{"".join(_format_recourse_chip(h) for h in hints[:2])}</div>'
-        if hints
-        else '<div class="recourse-clean">No structural risks flagged across evaluated features.</div>'
-    )
+    spans = "".join(_format_specimen_span(seg, s) for seg, s in _specimen_segments(tokens, cells))
+    boxes = "".join(_format_anatomy_cell(t, v, f, s) for t, v, f, s in cells)
+    recourse_html = _format_recourse_section(result.get("counterfactual_hints") or [])
     return (
         f'<div class="panel workbench-fade"><div class="panel-head">'
         f'<span class="panel-title">URL anatomy and key fixes</span>'
