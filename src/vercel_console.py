@@ -1024,6 +1024,57 @@ PAGE_CSS = """
     }
     .attr-extra-hidden { display: none !important; }
 
+
+    .top-summary-grid {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 24px;
+        margin-bottom: 24px;
+        align-items: stretch;
+    }
+    @media (max-width: 1040px) {
+        .top-summary-grid { grid-template-columns: 1fr; }
+    }
+    .consensus-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+    }
+    .recourse-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 16px;
+    }
+    .recourse-chip {
+        display: grid;
+        grid-template-columns: 160px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+    .recourse-chip .recourse-copy {
+        margin-bottom: 0;
+        color: #9B9B9B;
+    }
+    .recourse-clean {
+        margin-top: 16px;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 12px;
+        line-height: 16px;
+        color: #10B981;
+    }
+    @media (max-width: 720px) {
+        .recourse-chip { grid-template-columns: 1fr; gap: 4px; }
+    }
+
     @media (max-width: 1024px) {
         .workbench-grid { grid-template-columns: 1fr; }
         .dossier-sticky { position: static; }
@@ -1463,13 +1514,25 @@ def diagnose_uci(idx):
     }
 
 
+def _format_consensus_row_html(entry):
+    """Formats one compact model consensus bar row."""
+    is_phish = entry["verdict"] == "Phishing"
+    color = TONE_COLORS["critical"] if is_phish else TONE_COLORS["safe"]
+    pct = min(100.0, max(0.0, float(entry["prob_pct"])))
+    return (
+        f'<div class="consensus-row"><div class="consensus-top">'
+        f'<span class="consensus-name">{html.escape(entry["name"])}</span>'
+        f'<span class="consensus-meta" style="color: {color};">{pct:.1f}%</span></div>'
+        f'<div class="bar-track"><div class="bar-fill" style="width: {pct:.1f}%; '
+        f'background-color: {color};"></div></div></div>'
+    )
+
+
 def _render_verdict_dossier_card(title, subtitle, risk_pct, result, sec_title, sec_val):
-    """Renders left dossier verdict hero, radial SVG gauge, threshold ruler, and 2x2 telemetry."""
+    """Renders focused verdict dial, status, and compact 3-model consensus."""
     color = TONE_COLORS[risk_tone(risk_pct)]
-    clamped = min(98.0, max(2.0, risk_pct))
     dash_off = 175.93 * (1.0 - min(100.0, max(0.0, risk_pct)) / 100.0)
-    base_v = result["base_value"]
-    net_m = sum(d["shap_value"] for d in result["all_features"]) + base_v
+    bars = "".join(map(_format_consensus_row_html, result["consensus"]))
     ring_svg = (
         f'<svg class="verdict-ring-svg" viewBox="0 0 72 72" aria-hidden="true">'
         f'<circle cx="36" cy="36" r="28" fill="none" stroke="#272727" stroke-width="5"/>'
@@ -1479,91 +1542,24 @@ def _render_verdict_dossier_card(title, subtitle, risk_pct, result, sec_title, s
     )
     return (
         f'<div class="panel workbench-fade">'
-        f'<div class="verdict-eyebrow"><span class="verdict-dot" style="background-color: {color};"></span>Automated classification</div>'
+        f'<div class="panel-head"><span class="panel-title">Threat verdict</span>'
+        f'<span class="status-pill" style="color: {color};">{html.escape(sec_val)}</span></div>'
         f'<div class="verdict-hero-row"><div class="verdict-score-col">'
         f'<div id="verdict-score-num" class="verdict-score-value" data-val="{risk_pct:.1f}" style="color: {color};">{risk_pct:.1f}%</div>'
-        f'<span class="status-pill" style="color: {color};">Threshold 50.0%</span></div>{ring_svg}</div>'
-        f'<div class="verdict-title" style="color: {color};">{html.escape(title)}</div>'
+        f'<div class="verdict-title" style="color: {color};">{html.escape(title)}</div></div>{ring_svg}</div>'
         f'<div class="verdict-sub">{html.escape(subtitle)}</div>'
-        f'<div class="ruler-wrap"><div class="ruler-track"><div class="ruler-zone-safe"></div><div class="ruler-zone-warn"></div><div class="ruler-zone-crit"></div></div>'
-        f'<div class="ruler-threshold"></div><div class="ruler-needle" style="left: {clamped:.1f}%; background-color: {color};"></div></div>'
-        f'<div class="ruler-legend"><span>0% Safe</span><span>50% Cutoff</span><span>100% Phish</span></div>'
-        f'<div class="hairline-grid-2">'
-        f'<div class="h-cell"><div class="cell-label">Safe probability</div><div class="cell-value" style="color: {TONE_COLORS["safe"]};">{100.0 - risk_pct:.1f}%</div></div>'
-        f'<div class="h-cell"><div class="cell-label">{html.escape(sec_title)}</div><div class="cell-value">{html.escape(sec_val)}</div></div>'
-        f'<div class="h-cell"><div class="cell-label">Base prior log odds</div><div class="cell-value">{_fmt_delta(base_v, 3)}</div></div>'
-        f'<div class="h-cell"><div class="cell-label">Net log odds margin</div><div class="cell-value">{_fmt_delta(net_m, 3)}</div></div>'
-        f'</div></div>'
+        f'<div class="consensus-stack">{bars}</div></div>'
     )
 
 
-def _format_consensus_row_html(entry):
-    """Formats one progress bar row in the multi model consensus card."""
-    is_phish = entry["verdict"] == "Phishing"
-    color = TONE_COLORS["critical"] if is_phish else TONE_COLORS["safe"]
-    pct = min(100.0, max(0.0, float(entry["prob_pct"])))
+def _format_recourse_chip(hint):
+    """Formats one compact actionable recourse line."""
     return (
-        f'<div class="consensus-row"><div class="consensus-top">'
-        f'<span class="consensus-name">{html.escape(entry["name"])}</span>'
-        f'<span class="consensus-meta"><span style="color: {color};">'
-        f'{html.escape(entry["verdict"])}</span> {pct:.1f}%</span></div>'
-        f'<div class="bar-track"><div class="bar-fill" style="width: {pct:.1f}%; '
-        f'background-color: {color};"></div></div></div>'
-    )
-
-
-def _consensus_header_meta(c_rows):
-    """Computes consensus pill label and tone across evaluators."""
-    phish_votes = sum(1 for r in c_rows if r["verdict"] == "Phishing")
-    maj = max(phish_votes, len(c_rows) - phish_votes)
-    maj_lbl = "phishing" if phish_votes >= len(c_rows) - phish_votes else "legitimate"
-    color = TONE_COLORS["critical"] if maj_lbl == "phishing" else TONE_COLORS["safe"]
-    return f"{maj} of {len(c_rows)} predict {maj_lbl}", color
-
-
-def _render_consensus_card(result):
-    """Renders three model consensus card inside the left sticky dossier."""
-    c_rows = result["consensus"]
-    sum_text, sum_color = _consensus_header_meta(c_rows)
-    bars = "".join(map(_format_consensus_row_html, c_rows))
-    return (
-        f'<div class="panel workbench-fade"><div class="panel-head">'
-        f'<span class="panel-title">Multi model consensus</span>'
-        f'<span class="status-pill" style="color: {sum_color};">{sum_text}</span></div>'
-        f'{bars}</div>'
-    )
-
-
-def _format_recourse_item(hint, current_risk_pct):
-    """Formats one compact counterfactual diff card for the left dossier."""
-    cur_lbl = "suspicious" if hint["current_value"] == 0 else "phishing"
-    new_pct = round(hint["new_phishing_probability"] * 100.0, 1)
-    new_color = TONE_COLORS["safe"] if new_pct < 50 else TONE_COLORS["warning"]
-    return (
-        f'<div class="recourse-item"><div class="recourse-head">'
+        f'<div class="recourse-chip">'
         f'<span class="recourse-feat">{html.escape(hint["feature"])}</span>'
-        f'<span class="status-pill" style="color: #81c784;">Down {hint["risk_reduction_pct"]:.1f}%</span></div>'
-        f'<div class="recourse-meta">{cur_lbl} &#8594; legitimate norm ({current_risk_pct:.1f}% &#8594; {new_pct:.1f}%)</div>'
-        f'<div class="recourse-bars">'
-        f'<div class="recourse-track"><div class="recourse-fill" style="width: {min(100.0, max(0.0, current_risk_pct)):.1f}%; background-color: #e57373;"></div></div>'
-        f'<div class="recourse-track"><div class="recourse-fill" style="width: {min(100.0, max(0.0, new_pct)):.1f}%; background-color: {new_color};"></div></div>'
-        f'</div><div class="recourse-copy">{html.escape(_clean_copy(hint["guidance"]))}</div></div>'
-    )
-
-
-def _render_recourse_card(hints, current_risk_pct):
-    """Renders counterfactual recourse diff list or clean baseline notice."""
-    if not hints:
-        body = (
-            '<div class="recourse-item"><div style="font-size: 14px; font-weight: 600;">Clean baseline structure</div>'
-            '<div class="recourse-copy" style="margin-top: 4px;">No single change lowers the score noticeably. Evaluated properties match legitimate norms.</div></div>'
-        )
-    else:
-        body = f'<div class="recourse-list">{"".join(_format_recourse_item(h, current_risk_pct) for h in hints[:3])}</div>'
-    return (
-        f'<div class="panel workbench-fade"><div class="panel-head">'
-        f'<span class="panel-title">Actionable recourse</span>'
-        f'<span class="panel-meta">Minimal flip impact</span></div>{body}</div>'
+        f'<span class="recourse-copy">{html.escape(_clean_copy(hint["guidance"]))}</span>'
+        f'<span class="status-pill" style="color: #10B981;">−{hint["risk_reduction_pct"]:.1f}%</span>'
+        f'</div>'
     )
 
 
@@ -1582,28 +1578,31 @@ def _specimen_segments(tokens, cells):
 
 
 def _render_anatomy_card(url, result):
-    """Renders interactive URL specimen ribbon and five cell hairline token strip."""
+    """Renders syntax-highlighted URL specimen, 5 token cells, and top recourse chips."""
     tokens = _parse_url_tokens(url)
-    shaps = {item["feature"]: item["shap_value"] for item in result["all_features"]}
+    shaps = {d["feature"]: d["shap_value"] for d in result["all_features"]}
     cells = _resolve_rail_cells(tokens, shaps)
-    spans = "".join(
-        f'<span class="specimen-token {_token_tone_and_delta(s)[1]}">{html.escape(txt)}'
-        f'<span class="specimen-delta">{_token_tone_and_delta(s)[2]}</span></span>'
-        for txt, s in _specimen_segments(tokens, cells)
-    )
+    spans = _build_specimen_spans(tokens, cells)
     boxes = "".join(
         f'<div class="h-cell"><div class="cell-label">{html.escape(t)}</div>'
         f'<div class="rail-val">{html.escape(v)}</div>'
-        f'<div class="rail-badge"><span style="color: #9B9B9B;">{html.escape(f)}</span>'
+        f'<div class="rail-badge"><span style="color: #9B9B9B;">{html.escape(f)}</span> '
         f'<span style="color: {_token_tone_and_delta(s)[0]};">{_token_tone_and_delta(s)[2]}</span></div></div>'
         for t, v, f, s in cells
     )
+    hints = result.get("counterfactual_hints") or []
+    recourse_html = (
+        f'<div class="recourse-stack">{"".join(_format_recourse_chip(h) for h in hints[:2])}</div>'
+        if hints
+        else '<div class="recourse-clean">No structural risks flagged across evaluated features.</div>'
+    )
     return (
         f'<div class="panel workbench-fade"><div class="panel-head">'
-        f'<span class="panel-title">Segmented URL anatomy</span>'
-        f'<span class="panel-meta">Signed TreeSHAP token attribution</span></div>'
+        f'<span class="panel-title">URL anatomy and key fixes</span>'
+        f'<span class="panel-meta">Signed TreeSHAP attribution</span></div>'
         f'<div class="specimen-url-bar">{spans}</div>'
-        f'<div class="hairline-grid-5">{boxes}</div></div>'
+        f'<div class="hairline-grid-5">{boxes}</div>'
+        f'{recourse_html}</div>'
     )
 
 
@@ -1654,7 +1653,7 @@ def _format_attribution_row(mode, item, max_abs, row_idx):
     shap_v = item["shap_value"]
     bar_html = _butterfly_bar_html(shap_v, max_abs)
     delta_color = _delta_color(shap_v)
-    extra_cls = " attr-extra-row attr-extra-hidden" if (mode == "uci" and row_idx >= 10) else ""
+    extra_cls = " attr-extra-row attr-extra-hidden" if (mode == "uci" and row_idx >= 8) else ""
     return (
         f'<div class="attr-row{extra_cls}">'
         f'<div><div class="attr-feat-row"><span class="attr-name">{html.escape(item["feature"])}</span>'
@@ -1678,89 +1677,68 @@ def _render_domain_strip(group_breakdown):
 
 
 def _render_attribution_card(mode, result):
-    """Renders log odds waterfall strip plus unified diverging Shapley attribution list."""
+    """Renders focused diverging Shapley butterfly attribution list."""
     drivers = result["all_features"]
-    base_v = result["base_value"]
-    risk_push = sum(d["shap_value"] for d in drivers if d["shap_value"] > 0)
-    safe_pull = sum(d["shap_value"] for d in drivers if d["shap_value"] < 0)
-    net_m = base_v + risk_push + safe_pull
     max_abs = max([abs(d["shap_value"]) for d in drivers] + [0.1])
-
-    wf_strip = (
-        f'<div class="hairline-grid-4" style="margin-bottom: 16px;">'
-        f'<div class="h-cell"><div class="cell-label">Base expectation</div><div class="cell-value">{_fmt_delta(base_v, 3)}</div></div>'
-        f'<div class="h-cell"><div class="cell-label">Risk drivers push</div><div class="cell-value" style="color: #e57373;">{_fmt_delta(risk_push, 3)}</div></div>'
-        f'<div class="h-cell"><div class="cell-label">Safe signals pull</div><div class="cell-value" style="color: #81c784;">{_fmt_delta(safe_pull, 3)}</div></div>'
-        f'<div class="h-cell"><div class="cell-label">Net log odds margin</div><div class="cell-value">{_fmt_delta(net_m, 3)}</div></div>'
-        f'</div>'
-    )
     toggle_html = (
         '<div class="mode-switch">'
-        '<button id="uci-top-btn" type="button" class="mode-btn active" onclick="toggleUciRows(false)">Top 10 drivers</button>'
+        '<button id="uci-top-btn" type="button" class="mode-btn active" onclick="toggleUciRows(false)">Top 8 drivers</button>'
         '<button id="uci-all-btn" type="button" class="mode-btn" onclick="toggleUciRows(true)">All 30 features</button></div>'
         if mode == "uci"
-        else '<span class="panel-meta">Click state pills (\u22121 / 0 / +1) to test counterfactual impact</span>'
+        else '<span class="panel-meta">Click state pills (−1 / 0 / +1) to test counterfactual impact</span>'
     )
     rows_html = "".join(
         _format_attribution_row(mode, item, max_abs, idx)
         for idx, item in enumerate(drivers)
     )
-    domain_footer = _render_domain_strip(result["group_breakdown"]) if mode == "uci" else ""
     return (
         f'<div class="panel workbench-fade"><div class="panel-head">'
-        f'<span class="panel-title">TreeSHAP attribution and sensitivity</span>{toggle_html}</div>'
-        f'{wf_strip}<div class="hairline-rows">{rows_html}</div>{domain_footer}</div>'
+        f'<span class="panel-title">Feature attribution</span>{toggle_html}</div>'
+        f'<div class="attr-table">{rows_html}</div></div>'
     )
 
 
 def build_diagnose_payload(mode="uci", url=None, idx=DEFAULT_UCI_IDX, overrides=None):
-    """Produces split pane dossier and X-ray attribution HTML for live URL or UCI mode."""
+    """Produces streamlined 2-row verdict, anatomy, and attribution HTML."""
     t0 = time.perf_counter()
     data = load_runtime_data()
     if mode == "live":
         res = diagnose_live(url, overrides)
         ms = max(0.1, (time.perf_counter() - t0) * 1000.0)
         risk_pct = res["phishing_probability"] * 100.0
-        dossier = (
-            _render_verdict_dossier_card(
-                VERDICT_TITLES[risk_tone(risk_pct)],
-                "Evaluated across eight offline lexical properties with zero network exposure.",
-                risk_pct, res, "Inference latency", f"{ms:.1f} ms",
-            )
-            + _render_consensus_card(res)
-            + _render_recourse_card(res["counterfactual_hints"], risk_pct)
+        verdict = _render_verdict_dossier_card(
+            VERDICT_TITLES[risk_tone(risk_pct)],
+            "Evaluated offline across eight lexical URL features.",
+            risk_pct, res, "Latency", f"{ms:.1f} ms",
         )
-        canvas = _render_anatomy_card(res["clean_url"], res) + _render_attribution_card("live", res)
+        anatomy = _render_anatomy_card(res["clean_url"], res)
+        attrib = _render_attribution_card("live", res)
         return {
             "mode": "live",
             "clean_url": res["clean_url"],
             "has_overrides": res["has_overrides"],
             "feature_values": res["feature_values"],
             "risk_pct": round(risk_pct, 1),
-            "html": f'<div class="workbench-grid"><div class="dossier-sticky">{dossier}</div><div class="canvas-col">{canvas}</div></div>',
+            "html": f'<div class="top-summary-grid">{verdict}{anatomy}</div>{attrib}',
         }
 
     res = diagnose_uci(idx)
     risk_pct = res["phishing_probability"] * 100.0
-    acc = data["metrics"]["models"]["xgboost_full_30"]["accuracy"] * 100.0
-    agree = "The prediction matches." if res["prediction"] == res["true_label"] else "The prediction does not match."
-    dossier = (
-        _render_verdict_dossier_card(
-            f"Model predicts {res['prediction'].lower()}",
-            f"Ground truth is {res['true_label'].lower()}. {agree}",
-            risk_pct, res, "Benchmark accuracy", f"{acc:.2f}%",
-        )
-        + _render_consensus_card(res)
-        + _render_recourse_card(res["counterfactual_hints"], risk_pct)
+    agree = "Matches label." if res["prediction"] == res["true_label"] else "Differs from label."
+    verdict = _render_verdict_dossier_card(
+        f"Predicted {res['prediction'].lower()}",
+        f"Ground truth is {res['true_label'].lower()}. {agree}",
+        risk_pct, res, "Ground truth", res["true_label"],
     )
-    canvas = _render_anatomy_card(res["url"], res) + _render_attribution_card("uci", res)
+    anatomy = _render_anatomy_card(res["url"], res)
+    attrib = _render_attribution_card("uci", res)
     return {
         "mode": "uci",
         "idx": res["idx"],
         "url": res["url"],
         "true_label": res["true_label"],
         "risk_pct": round(risk_pct, 1),
-        "html": f'<div class="workbench-grid"><div class="dossier-sticky">{dossier}</div><div class="canvas-col">{canvas}</div></div>',
+        "html": f'<div class="top-summary-grid">{verdict}{anatomy}</div>{attrib}',
     }
 
 
@@ -2058,8 +2036,7 @@ def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspec
         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap">'
         f'<style>{PAGE_CSS}</style></head><body><div class="container">'
         f'{_render_topbar(tab)}'
-        '<div class="hero-band"><div class="hero-heading">Evaluate website security with transparent reasoning</div>'
-        '<div class="hero-sub">Exact game theoretic feature attributions, population calibration, and actionable counterfactual recourse.</div></div>'
+        ""
         f'<div id="panel-inspect" class="tab-panel {_active_cls(tab, "inspect")}">{inspect_html}</div>'
         f'<div id="panel-eval" class="tab-panel {_active_cls(tab, "eval")}">{_render_eval_tab(data)}</div>'
         f'<div id="panel-catalog" class="tab-panel {_active_cls(tab, "catalog")}">{_render_catalog_tab(data)}</div>'
