@@ -35,7 +35,7 @@ button, input, select { font: inherit; color: inherit; font-style: normal; }
 button { cursor: pointer; }
 ::selection { background: #313131; }
 
-.page { max-width: 1040px; margin: 0 auto; padding: 0 24px 96px; }
+.page { max-width: 1440px; margin: 0 auto; padding: 0 32px 64px; }
 .rule { height: 1px; background: var(--line); }
 
 /* Navigation */
@@ -53,7 +53,7 @@ button { cursor: pointer; }
 /* Panels */
 .panel { display: none; }
 .panel.active { display: block; animation: rise 320ms var(--ease) both; }
-.intro { padding: 48px 0 32px; }
+.intro { padding: 32px 0 24px; }
 .intro h1 {
     font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -0.02em;
     max-width: 680px; text-wrap: balance;
@@ -106,7 +106,7 @@ button { cursor: pointer; }
 /* Results */
 #inspect-results { transition: opacity 200ms; }
 #inspect-results.loading { opacity: 0.5; }
-.results { margin-top: 48px; animation: rise 360ms var(--ease) both; }
+.results { margin-top: 32px; animation: rise 360ms var(--ease) both; }
 .verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
 .tag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 500; }
 .tag-note { color: var(--muted); font-weight: 400; }
@@ -234,7 +234,7 @@ button { cursor: pointer; }
 .field-grow { flex: 1; min-width: 220px; }
 .field::placeholder { color: var(--faint); }
 .match { margin-left: auto; font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); }
-.cat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
+.cat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
 .cat {
     display: flex; flex-direction: column; gap: 12px; padding: 24px;
     background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
@@ -258,7 +258,11 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+@media (max-width: 1100px) {
+    .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 760px) {
+    .page { padding: 0 16px 48px; }
     .nav-meta { display: none; }
     .verdict { grid-template-columns: 1fr; gap: 24px; }
     .score { text-align: left; }
