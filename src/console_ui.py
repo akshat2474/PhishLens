@@ -66,9 +66,9 @@ FEATURE_NAMES = {
 
 LOGO_SVG = (
     '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">'
-    '<circle cx="8" cy="8" r="6" stroke="#EDEDED" stroke-width="1.5"/>'
-    '<path d="M12.5 12.5L16.5 16.5" stroke="#EDEDED" stroke-width="1.5" stroke-linecap="round"/>'
-    '<circle cx="8" cy="8" r="2" fill="#EDEDED"/></svg>'
+    '<circle cx="8" cy="8" r="6" stroke="#FFFFFF" stroke-width="1.5"/>'
+    '<path d="M12.5 12.5L16.5 16.5" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/>'
+    '<circle cx="8" cy="8" r="2" fill="#FFFFFF"/></svg>'
 )
 ICON_PREV = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 4L6 8L10 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
 ICON_NEXT = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -388,7 +388,7 @@ def _roc_svg(scores):
     curves = (
         ("xgboost_live_lexical_8", "#7A7A7A", "4 4"),
         ("random_forest_full_30", "#A1A1A1", "none"),
-        ("xgboost_full_30", "#EDEDED", "none"),
+        ("xgboost_full_30", "#FFFFFF", "none"),
     )
     lines = "".join(
         f'<polyline fill="none" stroke="{c}" stroke-width="1.5" stroke-dasharray="{d}" '
@@ -404,7 +404,7 @@ def _roc_svg(scores):
 
 def _legend():
     """Renders the ROC chart legend."""
-    items = (("XGBoost, 30 signals", "#EDEDED"), ("Random forest", "#A1A1A1"), ("XGBoost, 8 address signals", "#7A7A7A"))
+    items = (("XGBoost, 30 signals", "#FFFFFF"), ("Random forest", "#A1A1A1"), ("XGBoost, 8 address signals", "#7A7A7A"))
     return '<div class="legend">' + "".join(
         f'<span class="legend-item"><span class="legend-line" style="background: {c};"></span>{lbl}</span>'
         for lbl, c in items
@@ -474,7 +474,7 @@ def _importance_list(global_shap):
     rows = "".join(
         f'<div class="imp"><span class="imp-name">{esc(feature_label(d["feature"]))}</span>'
         f'<div class="imp-track"><div class="imp-fill" style="width: {d["mean_shap"] / top * 100:.1f}%; '
-        f'background: {"#EDEDED" if d["is_live"] else "#3A3A3A"};"></div></div>'
+        f'background: {"#FFFFFF" if d["is_live"] else "#3A3A3A"};"></div></div>'
         f'<span class="imp-val">{d["mean_shap"]:.3f}</span></div>'
         for d in global_shap
     )
