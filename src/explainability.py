@@ -46,62 +46,48 @@ class PhishLensExplainer:
             self.model_path = os.path.join(ARTIFACTS_DIR, "xgb_live_8.joblib")
             self.bg_path = os.path.join(ARTIFACTS_DIR, "shap_bg_live.npy")
             self.features = self.catalog["live_lexical_features"]
+            self.rf_model = None
+            self.lr_model = None
         else:
             self.model_path = os.path.join(ARTIFACTS_DIR, "xgb_full_30.joblib")
             self.bg_path = os.path.join(ARTIFACTS_DIR, "shap_bg_full.npy")
             self.features = list(self.catalog["features"].keys())
+            self.rf_model = joblib.load(os.path.join(ARTIFACTS_DIR, "rf_full_30.joblib"))
+            self.lr_model = joblib.load(os.path.join(ARTIFACTS_DIR, "lr_full_30.joblib"))
 
         self.model = joblib.load(self.model_path)
         self.bg_data = np.load(self.bg_path)
         self.tree_explainer = shap.TreeExplainer(self.model, data=self.bg_data)
 
-    def explain_instance(self, feature_vector):
-        """
-        Computes local Shapley values, group contributions, and counterfactual recourse.
-        feature_vector: 1D array-like of feature values in self.features order.
-        """
-        x = np.array(feature_vector, dtype=float).reshape(1, -1)
-        prob_phishing = float(self.model.predict_proba(x)[0, 1])
-        prediction_label = "Phishing" if prob_phishing >= 0.50 else "Legitimate"
+    def _build_feature_attribution(self, feat_name, val, s_val):
+        """Builds a structured Shapley attribution dictionary for one feature."""
+        feat_meta = self.catalog["features"].get(feat_name, {})
+        is_risk = s_val > 0
+        human_text = (
+            feat_meta.get("plain_explanation_phishing", "Feature increases phishing probability.")
+            if is_risk
+            else feat_meta.get("plain_explanation_legit", "Feature suggests legitimate behavior.")
+        )
+        return {
+            "feature": feat_name,
+            "value": int(val),
+            "shap_value": round(float(s_val), 4),
+            "abs_impact": round(abs(float(s_val)), 4),
+            "pushes_toward": "Phishing" if is_risk else "Legitimate",
+            "group": feat_meta.get("group", "General"),
+            "description": feat_meta.get("description", ""),
+            "rule": feat_meta.get("rule", ""),
+            "human_text": human_text,
+        }
 
-        # Compute raw Shapley values
-        shap_values = self.tree_explainer(x)
-        raw_shaps = shap_values.values[0]
-        base_value = float(shap_values.base_values[0])
-
-        # Feature-level contributions
-        feature_attributions = []
-        for feat_name, val, s_val in zip(self.features, feature_vector, raw_shaps):
-            feat_meta = self.catalog["features"].get(feat_name, {})
-            is_risk = s_val > 0
-            human_text = (
-                feat_meta.get("plain_explanation_phishing", "Feature increases phishing probability.")
-                if is_risk
-                else feat_meta.get("plain_explanation_legit", "Feature suggests legitimate behavior.")
-            )
-
-            feature_attributions.append({
-                "feature": feat_name,
-                "value": int(val),
-                "shap_value": round(float(s_val), 4),
-                "abs_impact": round(abs(float(s_val)), 4),
-                "pushes_toward": "Phishing" if is_risk else "Legitimate",
-                "group": feat_meta.get("group", "General"),
-                "description": feat_meta.get("description", ""),
-                "rule": feat_meta.get("rule", ""),
-                "human_text": human_text,
-            })
-
-        # Sort features by absolute impact
-        feature_attributions.sort(key=lambda item: item["abs_impact"], reverse=True)
-
-        # Domain Group Aggregation
+    def _aggregate_groups(self, feature_attributions):
+        """Aggregates Shapley contributions per security domain."""
         group_totals = {}
         for item in feature_attributions:
             grp = item["group"]
             group_totals[grp] = group_totals.get(grp, 0.0) + item["shap_value"]
 
-        group_breakdown = [
+        breakdown = [
             {
                 "group": grp,
                 "net_shap": round(float(tot), 4),
@@ -109,10 +95,58 @@ class PhishLensExplainer:
             }
             for grp, tot in group_totals.items()
         ]
-        group_breakdown.sort(key=lambda item: abs(item["net_shap"]), reverse=True)
+        breakdown.sort(key=lambda item: abs(item["net_shap"]), reverse=True)
+        return breakdown
 
-        # Counterfactual Recourse Generation (What would flip this?)
+    def _consensus_entry(self, name, prob):
+        """Formats a single evaluator consensus score entry."""
+        return {
+            "name": name,
+            "prob_pct": round(float(prob) * 100, 1),
+            "verdict": "Phishing" if prob >= 0.50 else "Legitimate",
+        }
+
+    def _compute_model_consensus(self, x, prob_phishing, net_log_odds):
+        """Computes multi model or signal consensus for the active feature matrix."""
+        if self.model_type == "full":
+            rf_prob = float(self.rf_model.predict_proba(x)[0, 1])
+            lr_prob = float(self.lr_model.predict_proba(x)[0, 1])
+            return [
+                self._consensus_entry("XGBoost (30 features)", prob_phishing),
+                self._consensus_entry("Random Forest (200 trees)", rf_prob),
+                self._consensus_entry("Logistic Regression (L2)", lr_prob),
+            ]
+        cal_prob = 1.0 / (1.0 + float(np.exp(-np.clip(net_log_odds, -20.0, 20.0))))
+        rule_density = float(np.mean(x[0] < 1))
+        return [
+            self._consensus_entry("XGBoost lexical", prob_phishing),
+            self._consensus_entry("Log odds margin calibration", cal_prob),
+            self._consensus_entry("Structural rule density", rule_density),
+        ]
+
+    def explain_instance(self, feature_vector):
+        """
+        Computes local Shapley values, group contributions, consensus, and recourse.
+        feature_vector: 1D array-like of feature values in self.features order.
+        """
+        x = np.array(feature_vector, dtype=float).reshape(1, -1)
+        prob_phishing = float(self.model.predict_proba(x)[0, 1])
+        prediction_label = "Phishing" if prob_phishing >= 0.50 else "Legitimate"
+
+        shap_values = self.tree_explainer(x)
+        raw_shaps = shap_values.values[0]
+        base_value = float(shap_values.base_values[0])
+        net_log_odds = base_value + float(np.sum(raw_shaps))
+
+        feature_attributions = [
+            self._build_feature_attribution(feat_name, val, s_val)
+            for feat_name, val, s_val in zip(self.features, feature_vector, raw_shaps)
+        ]
+        feature_attributions.sort(key=lambda item: item["abs_impact"], reverse=True)
+
+        group_breakdown = self._aggregate_groups(feature_attributions)
         counterfactuals = self._compute_counterfactual_hints(feature_vector, prob_phishing)
+        consensus = self._compute_model_consensus(x, prob_phishing, net_log_odds)
 
         return {
             "prediction": prediction_label,
@@ -123,6 +157,7 @@ class PhishLensExplainer:
             "all_features": feature_attributions,
             "group_breakdown": group_breakdown,
             "counterfactual_hints": counterfactuals,
+            "consensus": consensus,
             "model_type": self.model_type,
         }
 

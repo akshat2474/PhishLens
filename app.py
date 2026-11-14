@@ -23,6 +23,8 @@ from src.feature_extractor import (
 from src.explainability import PhishLensExplainer
 from src.ui_components import (
     inject_result_styles,
+    render_console_table,
+    render_feature_catalog_grid,
     render_results_body,
     render_segmented_token_rail,
     render_verdict,
@@ -36,6 +38,13 @@ VERDICT_TITLES = {
     "safe": "Legitimate domain structure",
 }
 STATE_LABELS = {1: "Legitimate", 0: "Suspicious", -1: "Phishing"}
+URL_PRESETS = [
+    ("IP host spoofing", "http://192.168.1.243/login/auth/verify"),
+    ("Subdomain chain", "http://account.security.verify.login.portal.org/signin"),
+    ("Brand hyphen trap", "http://https-paypal-account-update.com/auth"),
+    ("Shortener redirect", "https://bit.ly/secure-account-redirect//http://evil.org"),
+    ("Clean baseline", "https://www.github.com/explore"),
+]
 
 st.set_page_config(
     page_title="PhishLens | Threat Intelligence",
@@ -49,7 +58,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
 
     html, body, [class*="css"], .stMarkdown {
-        font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-family: 'Geist', sans-serif !important;
         background-color: #000000 !important;
         color: #FFFFFF !important;
     }
@@ -76,7 +85,8 @@ st.markdown("""
         padding: 4px 8px;
         border-radius: 4px;
         font-family: 'Geist Mono', monospace;
-        font-size: 11px;
+        font-size: 12px;
+        line-height: 16px;
         font-weight: 500;
         background-color: #1F1F1F;
         border: 1px solid #272727;
@@ -90,7 +100,7 @@ st.markdown("""
     }
 
     .hero-heading {
-        font-size: 32px;
+        font-size: 36px;
         line-height: 40px;
         font-weight: 600;
         letter-spacing: -0.02em;
@@ -116,7 +126,8 @@ st.markdown("""
 
     .chosen-url-text {
         font-family: 'Geist Mono', monospace;
-        font-size: 13px;
+        font-size: 14px;
+        line-height: 20px;
         font-weight: 500;
         color: #FFFFFF;
         word-break: break-all;
@@ -152,7 +163,8 @@ st.markdown("""
     /* Buttons */
     .stButton > button {
         font-family: 'Geist', sans-serif !important;
-        font-size: 13px !important;
+        font-size: 14px !important;
+        line-height: 20px !important;
         font-weight: 600 !important;
         padding: 8px 12px !important;
         border-radius: 8px !important;
@@ -204,7 +216,7 @@ st.markdown("""
         border: 1px solid #272727 !important;
         border-radius: 8px !important;
         color: #FFFFFF !important;
-        padding: 10px 14px !important;
+        padding: 8px 12px !important;
     }
 
     .stTextInput input:focus {
@@ -235,7 +247,7 @@ st.markdown("""
         border: 1px solid #272727 !important;
         border-radius: 8px !important;
         padding: 4px !important;
-        gap: 6px !important;
+        gap: 4px !important;
         margin-bottom: 24px !important;
         box-sizing: border-box !important;
     }
@@ -249,14 +261,15 @@ st.markdown("""
         text-align: center !important;
         font-family: 'Geist', sans-serif !important;
         font-size: 14px !important;
+        line-height: 20px !important;
         font-weight: 500 !important;
         color: #9B9B9B !important;
-        padding: 10px 16px !important;
-        border-radius: 6px !important;
+        padding: 8px 16px !important;
+        border-radius: 4px !important;
         border: none !important;
         background-color: transparent !important;
         white-space: nowrap !important;
-        transition: all 150ms ease !important;
+        transition: background-color 150ms ease, color 150ms ease !important;
         box-sizing: border-box !important;
     }
 
@@ -293,25 +306,6 @@ st.markdown("""
         height: 0px !important;
         width: 0px !important;
     }
-
-    /* Actionable Hint */
-    .action-card {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin-bottom: 8px;
-    }
-
-    /* Tagline */
-    .tagline-box {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 24px;
-        margin: 24px 0;
-        max-width: 680px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -335,6 +329,153 @@ def get_catalog_and_metrics():
     df = pd.read_csv("data/processed/phishing_websites.csv")
     test_df = df.iloc[splits["test_indices"]].reset_index(drop=True)
     return catalog, metrics, test_df
+
+
+@st.cache_data
+def get_test_probabilities_and_shap():
+    """Caches test partition prediction probabilities and global SHAP magnitudes."""
+    _, full_exp = get_explainers()
+    _, _, test_df = get_catalog_and_metrics()
+    feats = list(full_exp.features)
+    x_test = test_df[feats].values.astype(float)
+    y_true = test_df["label"].values.astype(int)
+    y_probs = full_exp.model.predict_proba(x_test)[:, 1]
+    shap_vals = full_exp.tree_explainer(x_test[:250]).values
+    mean_abs = np.mean(np.abs(shap_vals), axis=0)
+    importance_df = pd.DataFrame({"feature": feats, "mean_shap": mean_abs})
+    importance_df = importance_df.sort_values("mean_shap", ascending=False).head(12)
+    return y_true, y_probs, importance_df
+
+
+def compute_threshold_stats(y_true, y_probs, threshold):
+    """Computes classification metrics and confusion counts at an operating threshold."""
+    y_pred = (y_probs >= threshold).astype(int)
+    tp = int(np.sum((y_true == 1) & (y_pred == 1)))
+    fp = int(np.sum((y_true == 0) & (y_pred == 1)))
+    tn = int(np.sum((y_true == 0) & (y_pred == 0)))
+    fn = int(np.sum((y_true == 1) & (y_pred == 0)))
+    precision = tp / max(1, tp + fp)
+    recall = tp / max(1, tp + fn)
+    denom = precision + recall
+    f1 = (2.0 * precision * recall / denom) if denom > 0 else 0.0
+    fpr = fp / max(1, tn + fp)
+    return {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "fp": fp,
+        "fn": fn,
+        "fpr": fpr,
+        "cm": [[tn, fp], [fn, tp]],
+    }
+
+
+def _build_roc_figure(raw_scores, fpr_pt, tpr_pt):
+    """Builds the ROC curve figure with an active threshold marker."""
+    fig_roc = go.Figure()
+    fig_roc.add_shape(type="line", line=dict(dash="dash", color="#313131"), x0=0, x1=1, y0=0, y1=1)
+    for key, name, clr in [
+        ("xgboost_full_30", "XGBoost thirty features", "#FFFFFF"),
+        ("random_forest_full_30", "Random Forest", "#9B9B9B"),
+        ("xgboost_live_lexical_8", "XGBoost eight features", "#616161"),
+    ]:
+        samples = raw_scores[key]["curve_samples"]
+        fig_roc.add_trace(go.Scatter(x=samples["fpr"], y=samples["tpr"], mode="lines", name=name, line=dict(color=clr, width=1.5)))
+
+    fig_roc.add_trace(go.Scatter(
+        x=[fpr_pt],
+        y=[tpr_pt],
+        mode="markers",
+        name="Active threshold",
+        marker=dict(color="#e57373", size=8, line=dict(color="#FFFFFF", width=1.5)),
+    ))
+    fig_roc.update_layout(
+        paper_bgcolor="#181818",
+        plot_bgcolor="#181818",
+        margin=dict(l=16, r=16, t=16, b=24),
+        height=280,
+        xaxis=dict(title="False positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=11, color="#9B9B9B")),
+        yaxis=dict(title="True positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=11, color="#9B9B9B")),
+        legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95, font=dict(family="Geist", size=11, color="#9B9B9B")),
+    )
+    return fig_roc
+
+
+def _build_cm_figure(cm_data):
+    """Builds the monochromatic confusion matrix heatmap."""
+    fig_cm = px.imshow(
+        cm_data,
+        labels=dict(x="Predicted", y="Actual", color="Count"),
+        x=["Legitimate", "Phishing"],
+        y=["Legitimate", "Phishing"],
+        text_auto=True,
+        color_continuous_scale=[[0, "#1F1F1F"], [1, "#313131"]],
+    )
+    fig_cm.update_layout(
+        paper_bgcolor="#181818",
+        plot_bgcolor="#181818",
+        margin=dict(l=16, r=16, t=16, b=24),
+        height=280,
+        coloraxis_showscale=False,
+        xaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),
+        yaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),
+    )
+    return fig_cm
+
+
+def _build_global_shap_figure(importance_df, feat_catalog):
+    """Builds horizontal bar chart of mean absolute TreeSHAP magnitudes across top features."""
+    ordered = importance_df.iloc[::-1]
+    is_live_flags = [feat_catalog["features"].get(f, {}).get("extractable_live", False) for f in ordered["feature"]]
+    colors = ["#FFFFFF" if flag else "#616161" for flag in is_live_flags]
+    fig = go.Figure(go.Bar(
+        x=ordered["mean_shap"],
+        y=ordered["feature"],
+        orientation="h",
+        marker=dict(color=colors),
+        text=[f"{val:.3f}" for val in ordered["mean_shap"]],
+        textposition="outside",
+        textfont=dict(family="Geist Mono", size=11, color="#9B9B9B"),
+        hoverinfo="x+y",
+    ))
+    fig.update_layout(
+        paper_bgcolor="#181818",
+        plot_bgcolor="#181818",
+        margin=dict(l=16, r=40, t=16, b=24),
+        height=360,
+        xaxis=dict(
+            title="Mean absolute Shapley magnitude",
+            title_font=dict(family="Geist", size=12, color="#9B9B9B"),
+            gridcolor="#272727",
+            tickfont=dict(family="Geist Mono", size=11, color="#9B9B9B"),
+        ),
+        yaxis=dict(
+            gridcolor="#181818",
+            tickfont=dict(family="Geist Mono", size=11, color="#FFFFFF"),
+        ),
+        showlegend=False,
+    )
+    return fig
+
+
+def _matches_mode(meta, mode_choice):
+    """Checks whether a catalog entry matches the selected extraction mode filter."""
+    is_live = meta.get("extractable_live", False)
+    if mode_choice == "Live lexical only":
+        return is_live
+    if mode_choice == "Offline network and DOM":
+        return not is_live
+    return True
+
+
+def _filter_catalog_features(all_features, domain_choice, mode_choice):
+    """Filters feature catalog entries by security domain and extraction mode."""
+    return {
+        name: meta
+        for name, meta in all_features.items()
+        if (domain_choice == "All domains" or meta["group"] == domain_choice)
+        and _matches_mode(meta, mode_choice)
+    }
 
 
 def _synthesize_legitimate_url(idx):
@@ -425,13 +566,27 @@ with tabs[0]:
 
     # Mode 1: Live URL Input Form
     if st.session_state["scanner_mode"] == "Live URL input":
+        if "live_url_input" not in st.session_state:
+            st.session_state["live_url_input"] = st.session_state["target_url"]
+
+        st.markdown(
+            '<div style="font-size: 12px; line-height: 16px; color: #9B9B9B; margin-bottom: 8px; font-weight: 600;">Attack archetype presets</div>',
+            unsafe_allow_html=True,
+        )
+        preset_cols = st.columns(len(URL_PRESETS))
+        for p_col, (p_label, p_url) in zip(preset_cols, URL_PRESETS):
+            if p_col.button(p_label, key=f"preset_{p_label}", width="stretch"):
+                st.session_state["target_url"] = p_url
+                st.session_state["live_url_input"] = p_url
+                st.rerun()
+
         with st.form("scan_url_form", clear_on_submit=False):
             c_input, c_btn = st.columns([5, 1])
             entered_text = c_input.text_input(
                 "Address input",
-                value=st.session_state["target_url"],
                 placeholder="Enter website address to inspect (e.g. https://...)",
                 label_visibility="collapsed",
+                key="live_url_input",
             )
             scan_submitted = c_btn.form_submit_button("Scan URL", width="stretch")
 
@@ -441,7 +596,6 @@ with tabs[0]:
 
         active_url = st.session_state["target_url"]
         clean_url = sanitize_url(active_url)
-        parsed = urllib.parse.urlparse(clean_url)
         raw_feats_dict = extract_live_lexical_features(clean_url)
         extracted_vector = [raw_feats_dict[f] for f in LIVE_FEATURES]
 
@@ -449,7 +603,7 @@ with tabs[0]:
         st.markdown(f"""
         <div class="chosen-url-inline" style="margin: 8px 0 12px 0;">
             <span class="chosen-url-text">{clean_url}</span>
-            <div class="status-pill" style="color: #FFFFFF; border-color: #313131; font-size: 10px; padding: 2px 8px; flex-shrink: 0;">
+            <div class="status-pill" style="color: #FFFFFF; border-color: #313131; padding: 2px 8px; flex-shrink: 0;">
                 Live lexical input
             </div>
         </div>
@@ -502,7 +656,14 @@ with tabs[0]:
             }
             for item in scan_res["all_features"]
         ]
-        st.dataframe(pd.DataFrame(records), width="stretch", hide_index=True)
+        diag_cols = [
+            ("Property", "Property", "left"),
+            ("State", "State", "left"),
+            ("Shapley impact", "Shapley impact", "right"),
+            ("Influence", "Influence", "left"),
+            ("Forensic explanation", "Forensic explanation", "left"),
+        ]
+        render_console_table(records, diag_cols)
 
     # ===================================================================
     # BRANCH B: UCI BENCHMARK LABORATORY RECORD (30 FEATURES)
@@ -524,7 +685,7 @@ with tabs[0]:
         c_url.markdown(f"""
         <div class="chosen-url-inline">
             <span class="chosen-url-text">{rep_url}</span>
-            <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131; font-size: 10px; padding: 2px 8px; flex-shrink: 0;">
+            <div class="status-pill" style="color: {'#e57373' if true_class == 'Phishing' else '#81c784'}; border-color: #313131; padding: 2px 8px; flex-shrink: 0;">
                 Ground truth: {true_class.lower()}
             </div>
         </div>
@@ -553,7 +714,20 @@ with tabs[0]:
         )
 
         section_header("Security domain impact", "Net Shapley contribution summed per feature domain.")
-        st.dataframe(pd.DataFrame(full_eval["group_breakdown"]), width="stretch", hide_index=True)
+        domain_rows = [
+            {
+                "group": row["group"],
+                "net_shap": f"{row['net_shap']:+.4f}",
+                "verdict": row["verdict"],
+            }
+            for row in full_eval["group_breakdown"]
+        ]
+        domain_cols = [
+            ("group", "Security domain", "left"),
+            ("net_shap", "Net Shapley delta", "right"),
+            ("verdict", "Domain impact", "left"),
+        ]
+        render_console_table(domain_rows, domain_cols)
 
 # -------------------------------------------------------------------
 # TAB 2: MODEL EVALUATION AND ABLATION
@@ -573,92 +747,87 @@ with tabs[1]:
 
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-    # Comparative Table
+    # Comparative Console Table
     perf_rows = [
         {"Model architecture": "XGBoost", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['xgboost_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['xgboost_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['xgboost_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['xgboost_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['xgboost_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['xgboost_full_30']['mcc']:.4f}"},
         {"Model architecture": "Random Forest", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['random_forest_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['random_forest_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['random_forest_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['random_forest_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['random_forest_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['random_forest_full_30']['mcc']:.4f}"},
         {"Model architecture": "Logistic Regression", "Feature count": "30 (Full)", "Accuracy": f"{raw_scores['logistic_regression_full_30']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['logistic_regression_full_30']['precision']*100:.2f}%", "Recall": f"{raw_scores['logistic_regression_full_30']['recall']*100:.2f}%", "F1 score": f"{raw_scores['logistic_regression_full_30']['f1']:.4f}", "ROC AUC": f"{raw_scores['logistic_regression_full_30']['roc_auc']:.4f}", "MCC": f"{raw_scores['logistic_regression_full_30']['mcc']:.4f}"},
         {"Model architecture": "XGBoost live subset", "Feature count": "8 (URL only)", "Accuracy": f"{raw_scores['xgboost_live_lexical_8']['accuracy']*100:.2f}%", "Precision": f"{raw_scores['xgboost_live_lexical_8']['precision']*100:.2f}%", "Recall": f"{raw_scores['xgboost_live_lexical_8']['recall']*100:.2f}%", "F1 score": f"{raw_scores['xgboost_live_lexical_8']['f1']:.4f}", "ROC AUC": f"{raw_scores['xgboost_live_lexical_8']['roc_auc']:.4f}", "MCC": f"{raw_scores['xgboost_live_lexical_8']['mcc']:.4f}"},
     ]
-    st.dataframe(pd.DataFrame(perf_rows), width="stretch", hide_index=True)
+    perf_cols = [
+        ("Model architecture", "Model architecture", "left"),
+        ("Feature count", "Features", "left"),
+        ("Accuracy", "Accuracy", "right"),
+        ("Precision", "Precision", "right"),
+        ("Recall", "Recall", "right"),
+        ("F1 score", "F1 score", "right"),
+        ("ROC AUC", "ROC AUC", "right"),
+        ("MCC", "MCC", "right"),
+    ]
+    render_console_table(perf_rows, perf_cols)
+
+    # Interactive Decision Threshold Simulator
+    section_header(
+        "Interactive decision threshold simulator",
+        "Adjust the probability threshold to balance false alarms against missed phishing attacks.",
+    )
+    y_test_true, y_test_probs, global_imp_df = get_test_probabilities_and_shap()
+    threshold = st.slider(
+        "Classification probability threshold",
+        min_value=0.05,
+        max_value=0.95,
+        value=0.50,
+        step=0.05,
+    )
+    t_stats = compute_threshold_stats(y_test_true, y_test_probs, threshold)
+
+    th1, th2, th3, th4 = st.columns(4)
+    th1.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Precision at {threshold:.2f}</div><div class="kpi-value">{t_stats['precision']*100:.2f}%</div></div>""", unsafe_allow_html=True)
+    th2.markdown(f"""<div class="kpi-tile"><div class="kpi-title">Recall at {threshold:.2f}</div><div class="kpi-value">{t_stats['recall']*100:.2f}%</div></div>""", unsafe_allow_html=True)
+    th3.markdown(f"""<div class="kpi-tile"><div class="kpi-title">F1 score at {threshold:.2f}</div><div class="kpi-value">{t_stats['f1']:.4f}</div></div>""", unsafe_allow_html=True)
+    th4.markdown(f"""<div class="kpi-tile"><div class="kpi-title">False positives / Missed</div><div class="kpi-value">{t_stats['fp']} / {t_stats['fn']}</div></div>""", unsafe_allow_html=True)
 
     # ROC & Confusion Matrix
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
     c_roc, c_cm = st.columns(2)
     with c_roc:
         st.markdown("##### Receiver operating characteristic")
-        fig_roc = go.Figure()
-        fig_roc.add_shape(type="line", line=dict(dash="dash", color="#313131"), x0=0, x1=1, y0=0, y1=1)
-
-        for key, name, clr in [
-            ("xgboost_full_30", "XGBoost thirty features", "#FFFFFF"),
-            ("random_forest_full_30", "Random Forest", "#9B9B9B"),
-            ("xgboost_live_lexical_8", "XGBoost eight features", "#616161"),
-        ]:
-            samples = raw_scores[key]["curve_samples"]
-            fig_roc.add_trace(go.Scatter(x=samples["fpr"], y=samples["tpr"], mode="lines", name=name, line=dict(color=clr, width=1.5)))
-
-        fig_roc.update_layout(
-            paper_bgcolor="#181818",
-            plot_bgcolor="#181818",
-            margin=dict(l=16, r=16, t=16, b=24),
-            height=280,
-            xaxis=dict(title="False positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
-            yaxis=dict(title="True positive rate", gridcolor="#272727", tickfont=dict(family="Geist Mono", size=10, color="#9B9B9B")),
-            legend=dict(yanchor="bottom", y=0.05, xanchor="right", x=0.95, font=dict(family="Geist", size=10, color="#9B9B9B")),
-        )
-        st.plotly_chart(fig_roc, width="stretch")
+        st.plotly_chart(_build_roc_figure(raw_scores, t_stats["fpr"], t_stats["recall"]), width="stretch")
 
     with c_cm:
-        st.markdown("##### Confusion matrix (30 feature model)")
-        cm_data = raw_scores["xgboost_full_30"]["confusion_matrix"]
-        fig_cm = px.imshow(
-            cm_data,
-            labels=dict(x="Predicted", y="Actual", color="Count"),
-            x=["Legitimate", "Phishing"],
-            y=["Legitimate", "Phishing"],
-            text_auto=True,
-            color_continuous_scale=[[0, "#1F1F1F"], [1, "#313131"]],
-        )
-        fig_cm.update_layout(
-            paper_bgcolor="#181818",
-            plot_bgcolor="#181818",
-            margin=dict(l=16, r=16, t=16, b=24),
-            height=280,
-            coloraxis_showscale=False,
-            xaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),
-            yaxis=dict(tickfont=dict(family="Geist", color="#FFFFFF")),
-        )
-        st.plotly_chart(fig_cm, width="stretch")
+        st.markdown(f"##### Confusion matrix at threshold {threshold:.2f}")
+        st.plotly_chart(_build_cm_figure(t_stats["cm"]), width="stretch")
+
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+    section_header(
+        "Global TreeSHAP feature importance",
+        "Mean absolute Shapley magnitude across test records. White bars mark live lexical features and grey bars mark offline attributes.",
+    )
+    st.plotly_chart(_build_global_shap_figure(global_imp_df, catalog), width="stretch")
 
 # -------------------------------------------------------------------
 # TAB 3: FEATURE CATALOG
 # -------------------------------------------------------------------
 with tabs[2]:
     st.markdown("#### Feature catalog")
-    st.caption("Complete taxonomy of thirty features defined by Mohammad et al., annotated with live extraction feasibility.")
+    st.caption("Complete taxonomy of thirty features defined by Mohammad et al., annotated with empirical partition prevalence.")
 
-    filter_domain = st.selectbox("Select security domain", ["All domains"] + list(catalog["feature_groups"].keys()))
+    f_col1, f_col2 = st.columns(2)
+    filter_domain = f_col1.selectbox(
+        "Select security domain",
+        ["All domains"] + list(catalog["feature_groups"].keys()),
+    )
+    filter_mode = f_col2.selectbox(
+        "Select extraction mode",
+        ["All features", "Live lexical only", "Offline network and DOM"],
+    )
 
-    for f_name, meta in catalog["features"].items():
-        if filter_domain != "All domains" and meta["group"] != filter_domain:
-            continue
-
-        is_live = meta.get("extractable_live", False)
-        is_dep = meta.get("deprecated", False)
-        status_note = "Live lexical" if is_live else "Network or content"
-        if is_dep:
-            status_note += " (deprecated API)"
-
-        with st.expander(f"{f_name} — {status_note}"):
-            st.markdown(f"**Description**: {meta['description']}")
-            st.markdown(f"**Rule**: `{meta['rule']}`")
-            st.markdown(f"**Malicious indication**: {meta['plain_explanation_phishing']}")
-            st.markdown(f"**Legitimate indication**: {meta['plain_explanation_legit']}")
+    filtered_catalog = _filter_catalog_features(catalog["features"], filter_domain, filter_mode)
+    render_feature_catalog_grid(filtered_catalog, test_dataset)
 
 st.markdown("<div style='height: 32px;'></div>", unsafe_allow_html=True)
 st.markdown("""
-<div style="text-align: center; font-size: 11px; color: #616161; padding: 16px 0; border-top: 1px solid #181818;">
+<div style="text-align: center; font-size: 12px; line-height: 16px; color: #9B9B9B; padding: 16px 0;">
     PhishLens research system • Built for explainable threat intelligence
 </div>
 """, unsafe_allow_html=True)
