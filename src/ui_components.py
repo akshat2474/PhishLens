@@ -163,10 +163,11 @@ RESULT_CSS = """
         }
     }
     .token-rail-cell {
-        background-color: #1F1F1F;
+        background-color: #000000;
         border: 1px solid #272727;
         border-radius: 8px;
         padding: 12px;
+        transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -364,12 +365,14 @@ RESULT_CSS = """
         font-weight: 500;
         text-align: left;
         padding: 8px;
-        border-bottom: 1px solid #272727;
+        background-color: #181818;
     }
     .ledger-table td {
         padding: 8px;
-        border-bottom: 1px solid #272727;
         font-variant-numeric: tabular-nums;
+    }
+    .ledger-table tbody tr:nth-child(even) td {
+        background-color: #181818;
     }
     .ledger-row-risk {
         color: #e57373;
@@ -377,10 +380,10 @@ RESULT_CSS = """
     .ledger-row-safe {
         color: #81c784;
     }
-    .ledger-row-total {
+    .ledger-row-total td {
         font-weight: 600;
         color: #FFFFFF;
-        border-top: 1px solid #313131;
+        background-color: #1F1F1F;
     }
 
     /* Key Evidence Grid */
@@ -534,17 +537,73 @@ RESULT_CSS = """
         font-weight: 600;
         color: #9B9B9B;
         padding: 12px 16px;
-        background-color: #1F1F1F;
-        border-bottom: 1px solid #272727;
+        background-color: #181818;
     }
     .console-table td {
         padding: 12px 16px;
         color: #FFFFFF;
-        border-bottom: 1px solid #272727;
         font-variant-numeric: tabular-nums;
+        background-color: #000000;
+        transition: background-color 140ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .console-table tr:last-child td {
-        border-bottom: none;
+    .console-table tbody tr:nth-child(even) td {
+        background-color: #181818;
+    }
+    .console-table tbody tr:hover td {
+        background-color: #1F1F1F;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .verdict-card,
+    .token-rail-deck,
+    .consensus-card,
+    .ledger-card,
+    .evidence-card,
+    .recourse-card,
+    .console-table-wrap,
+    .catalog-card,
+    .action-card {
+        background-color: #000000;
+        border: 1px solid #272727;
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .specimen-url-bar {
+        background-color: #000000;
+        border: 1px solid #272727;
+    }
+    .evidence-card:hover,
+    .recourse-card:hover,
+    .catalog-card:hover,
+    .token-rail-cell:hover {
+        border-color: #313131;
+        background-color: #181818;
+    }
+    .verdict-fill,
+    .consensus-fill,
+    .recourse-fill {
+        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .verdict-card,
+        .token-rail-deck,
+        .consensus-card,
+        .ledger-card,
+        .evidence-card,
+        .recourse-card,
+        .console-table-wrap,
+        .catalog-card,
+        .action-card {
+            animation: none;
+            transition: none;
+        }
+        .verdict-fill,
+        .consensus-fill,
+        .recourse-fill {
+            transition: none;
+        }
     }
     .console-badge {
         font-family: 'Geist Mono', monospace;

@@ -59,8 +59,61 @@ st.markdown("""
 
     html, body, [class*="css"], .stMarkdown {
         font-family: 'Geist', sans-serif !important;
+        font-style: normal !important;
         background-color: #000000 !important;
         color: #FFFFFF !important;
+    }
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .vercel-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .vercel-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+        color: #FFFFFF;
+    }
+    .vercel-tri {
+        font-size: 14px;
+        line-height: 16px;
+        color: #FFFFFF;
+    }
+    .vercel-sub {
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+    }
+    .vercel-chip {
+        font-family: 'Geist Mono', monospace !important;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 9999px;
+        padding: 4px 12px;
+    }
+    .hero-box {
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .vercel-topbar, .hero-box, .kpi-tile { animation: none; transition: none; }
     }
 
     code, pre, .mono {
@@ -136,11 +189,17 @@ st.markdown("""
 
     /* KPI Tiles */
     .kpi-tile {
-        background-color: #181818;
+        background-color: #000000;
         border: 1px solid #272727;
         border-radius: 12px;
         padding: 16px;
         text-align: left;
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .kpi-tile:hover {
+        border-color: #313131;
+        background-color: #181818;
     }
 
     .kpi-title {
@@ -226,11 +285,11 @@ st.markdown("""
 
     /* Main Layout Spacing */
     .main .block-container {
-        padding-top: 32px !important;
+        padding-top: 24px !important;
         padding-bottom: 48px !important;
         padding-left: 24px !important;
         padding-right: 24px !important;
-        max-width: 1240px !important;
+        max-width: 1440px !important;
         margin: 0 auto !important;
     }
 
@@ -525,6 +584,13 @@ catalog, model_metrics, test_dataset = get_catalog_and_metrics()
 
 # Hero Header
 st.markdown("""
+<div class="vercel-topbar">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span class="vercel-brand"><span class="vercel-tri">&#9650;</span> PhishLens</span>
+        <span class="vercel-sub">Threat intelligence</span>
+    </div>
+    <span class="vercel-chip">XGBoost &#8226; Random Forest &#8226; Logistic Regression</span>
+</div>
 <div class="hero-box">
     <div class="hero-heading">
         Evaluate website security<br>with transparent reasoning.

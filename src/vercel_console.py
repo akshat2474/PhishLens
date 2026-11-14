@@ -1,7 +1,7 @@
 """
-Lightweight HTML/WSGI renderer for the PhishLens Telemetry Console on Vercel.
-Reads precomputed TreeSHAP attributions and evaluation arrays from gzipped JSON
-so zero heavy C-extension ML libraries are needed at serverless runtime.
+Vercel Geist black and white Split Pane Forensic Workbench for PhishLens.
+Renders native SVG/CSS visualizations, inline What If attribution toggles,
+threshold simulator, and feature taxonomy from precomputed TreeSHAP bundles.
 """
 
 import gzip
@@ -40,6 +40,23 @@ BADGE_COLORS = {
     "Legitimate": "#81c784",
     "Supports Legitimacy": "#81c784",
 }
+COPY_REPLACEMENTS = (
+    ("->", "\u2192"),
+    ("-1", "\u22121"),
+    ("non-standard", "nonstandard"),
+    ("Right-clicking", "Right clicking"),
+    ("Right-click", "Right click"),
+    ("Long-term multi-year", "Long term multiyear"),
+    ("credential-harvesting", "credential harvesting"),
+    ("short-lived", "short lived"),
+    ("High-traffic", "High traffic"),
+    ("54-75", "54 to 75"),
+    ("22-61", "22 to 61"),
+    ("31-67", "31 to 67"),
+    ("17-81", "17 to 81"),
+    ("2-4", "2 to 4"),
+    ("1-2", "1 to 2"),
+)
 
 _CACHE = None
 
@@ -63,61 +80,143 @@ PAGE_CSS = """
         margin: 0;
     }
     p, span, div { text-wrap: pretty; }
-    .container {
-        max-width: 1240px;
-        margin: 0 auto;
-        padding: 32px 24px 48px 24px;
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    .hero-box { max-width: 680px; margin-bottom: 24px; }
-    .hero-heading {
-        font-size: 36px;
-        line-height: 40px;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-wrap: balance;
-        margin-bottom: 8px;
+    .workbench-fade {
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .tab-bar {
-        display: flex;
-        width: 100%;
-        background-color: #181818;
+
+    /* Top Vercel Chrome */
+    .topbar {
+        background-color: #000000;
         border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 4px;
-        gap: 4px;
-        margin-bottom: 24px;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
     }
-    .tab-btn {
-        flex: 1 1 0%;
-        font-family: 'Geist', sans-serif;
+    .brand-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .brand-name {
         font-size: 14px;
         line-height: 20px;
-        font-weight: 500;
-        color: #9B9B9B;
-        padding: 8px 16px;
-        border-radius: 4px;
-        border: none;
-        background-color: transparent;
-        cursor: pointer;
-        text-align: center;
-        white-space: nowrap;
-        transition: background-color 150ms ease, color 150ms ease;
+        font-weight: 600;
+        color: #FFFFFF;
     }
-    .tab-btn:hover { color: #FFFFFF; background-color: #1F1F1F; }
-    .tab-btn.active { background-color: #272727; color: #FFFFFF; font-weight: 600; }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    .mode-switch {
+    .brand-sep {
+        color: #313131;
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+    }
+    .brand-sub {
+        font-size: 14px;
+        line-height: 20px;
+        color: #9B9B9B;
+    }
+    .tab-bar {
         display: inline-flex;
         background-color: #181818;
         border: 1px solid #272727;
         border-radius: 8px;
         padding: 4px;
         gap: 4px;
+    }
+    .tab-btn {
+        font-family: 'Geist', sans-serif;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 500;
+        color: #9B9B9B;
+        padding: 4px 12px;
+        border-radius: 4px;
+        border: none;
+        background-color: transparent;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background-color 150ms ease, color 150ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .tab-btn:hover { color: #FFFFFF; background-color: #1F1F1F; }
+    .tab-btn.active { background-color: #272727; color: #FFFFFF; font-weight: 600; }
+    .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 12px;
+        border-radius: 8px;
+        border: 1px solid #272727;
+        background-color: #181818;
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 9999px; background-color: #81c784; }
+
+    .container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 24px 32px 64px 32px;
+    }
+    .hero-band {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
         margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+    .hero-box { max-width: 680px; }
+    .hero-heading {
+        font-size: 30px;
+        line-height: 36px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-wrap: balance;
+    }
+    .hero-sub {
+        font-size: 14px;
+        line-height: 20px;
+        color: #9B9B9B;
+        margin-top: 4px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* Command Omnibox Bar */
+    .omnibox {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+    }
+    .omnibox-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .mode-switch {
+        display: inline-flex;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 4px;
+        gap: 4px;
+        flex-shrink: 0;
     }
     .mode-btn {
         font-family: 'Geist', sans-serif;
@@ -128,11 +227,13 @@ PAGE_CSS = """
         background-color: transparent;
         border: none;
         border-radius: 4px;
-        padding: 8px 12px;
+        padding: 4px 12px;
         cursor: pointer;
+        transition: background-color 150ms ease, color 150ms ease;
     }
     .mode-btn:hover { color: #FFFFFF; background-color: #1F1F1F; }
     .mode-btn.active { background-color: #272727; color: #FFFFFF; font-weight: 600; }
+
     .btn {
         font-family: 'Geist', sans-serif;
         font-size: 14px;
@@ -144,57 +245,74 @@ PAGE_CSS = """
         background-color: #1F1F1F;
         color: #FFFFFF;
         cursor: pointer;
-        transition: background-color 150ms ease, border-color 150ms ease;
+        white-space: nowrap;
+        transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .btn:hover { background-color: #272727; border-color: #616161; }
+    .btn:active, .preset-pill:active, .state-pill:active { transform: scale(0.985); }
     .btn-primary {
         background-color: #FFFFFF;
         color: #000000;
         border: 1px solid #FFFFFF;
     }
     .btn-primary:hover { background-color: #E6E6E6; border-color: #E6E6E6; color: #000000; }
-    .preset-label {
-        font-size: 12px;
-        line-height: 16px;
-        color: #9B9B9B;
-        font-weight: 600;
-        margin-bottom: 8px;
-    }
-    .preset-grid {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 8px;
-        margin-bottom: 12px;
-    }
-    .form-row {
-        display: grid;
-        grid-template-columns: 5fr 1fr;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-    .uci-bar {
-        display: grid;
-        grid-template-columns: 1.2fr 3.8fr;
-        gap: 12px;
-        margin-bottom: 16px;
-        align-items: stretch;
-    }
+
+    .omnibox-controls { flex: 1 1 0%; min-width: 280px; }
+    .scan-form { display: flex; gap: 8px; align-items: center; }
     .text-input, .select-input {
         width: 100%;
         font-family: 'Geist Mono', monospace;
         font-size: 14px;
         line-height: 20px;
-        background-color: #181818;
+        background-color: #000000;
         border: 1px solid #272727;
         border-radius: 8px;
         color: #FFFFFF;
         padding: 8px 12px;
         outline: none;
+        transition: border-color 150ms ease;
     }
-    .select-input { font-family: 'Geist', sans-serif; }
+    .select-input { font-family: 'Geist', sans-serif; background-color: #181818; }
     .text-input:focus, .select-input:focus { border-color: #FFFFFF; }
-    .chosen-url-inline {
-        background-color: #181818;
+
+    .preset-strip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+    }
+    .preset-caption {
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        font-weight: 500;
+    }
+    .preset-pill {
+        font-family: 'Geist', sans-serif;
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 500;
+        color: #9B9B9B;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 6px;
+        padding: 4px 12px;
+        cursor: pointer;
+        transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .preset-pill:hover { background-color: #1F1F1F; border-color: #313131; color: #FFFFFF; }
+
+    .uci-controls-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .uci-url-box {
+        flex: 1 1 0%;
+        min-width: 240px;
+        background-color: #000000;
         border: 1px solid #272727;
         border-radius: 8px;
         padding: 8px 12px;
@@ -207,7 +325,6 @@ PAGE_CSS = """
         font-family: 'Geist Mono', monospace;
         font-size: 14px;
         line-height: 20px;
-        font-weight: 500;
         color: #FFFFFF;
         word-break: break-all;
     }
@@ -224,49 +341,64 @@ PAGE_CSS = """
         border: 1px solid #272727;
         color: #9B9B9B;
         flex-shrink: 0;
+        white-space: nowrap;
     }
-    .sandbox-details {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin: 12px 0 24px 0;
-    }
-    .sandbox-details summary {
-        cursor: pointer;
-        font-size: 14px;
-        line-height: 20px;
-        font-weight: 500;
-        color: #FFFFFF;
-    }
-    .sandbox-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-top: 12px;
-    }
-    .field-label {
-        display: block;
+    .record-counter {
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
         color: #9B9B9B;
-        margin-bottom: 4px;
+        font-variant-numeric: tabular-nums;
+        padding: 0 4px;
     }
-    .verdict-card {
+
+    /* Split Pane Forensic Workbench */
+    .workbench-grid {
+        display: grid;
+        grid-template-columns: 380px minmax(0, 1fr);
+        gap: 24px;
+        align-items: start;
+    }
+    .dossier-sticky {
+        position: sticky;
+        top: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    .canvas-col {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+    }
+    .panel {
         background-color: #181818;
         border: 1px solid #272727;
         border-radius: 12px;
-        padding: 24px;
-        margin-top: 16px;
-        margin-bottom: 24px;
+        padding: 16px;
     }
-    .verdict-top {
+    .panel-head {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        gap: 24px;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
     }
+    .panel-title {
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+        color: #FFFFFF;
+    }
+    .panel-meta {
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+    }
+
+    /* Verdict Dossier Card */
     .verdict-eyebrow {
         display: flex;
         align-items: center;
@@ -274,13 +406,17 @@ PAGE_CSS = """
         font-size: 12px;
         line-height: 16px;
         color: #9B9B9B;
-        font-weight: 600;
+        font-weight: 500;
+        margin-bottom: 8px;
     }
-    .verdict-dot { width: 8px; height: 8px; border-radius: 2px; }
-    .verdict-title { font-size: 24px; line-height: 32px; font-weight: 600; margin-top: 4px; }
-    .verdict-sub { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-top: 4px; max-width: 520px; }
-    .verdict-score { text-align: right; flex-shrink: 0; }
-    .verdict-score-label { font-size: 12px; line-height: 16px; color: #9B9B9B; }
+    .verdict-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+    .verdict-score-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 4px;
+    }
     .verdict-score-value {
         font-family: 'Geist Mono', monospace;
         font-size: 36px;
@@ -288,132 +424,78 @@ PAGE_CSS = """
         font-weight: 600;
         font-variant-numeric: tabular-nums;
     }
-    .verdict-track { height: 8px; border-radius: 4px; background-color: #272727; margin-top: 24px; overflow: hidden; }
-    .verdict-fill { height: 100%; border-radius: 4px; }
-    .token-rail-deck {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 24px;
-    }
-    .token-rail-header {
+    .verdict-title { font-size: 18px; line-height: 28px; font-weight: 600; margin-bottom: 4px; }
+    .verdict-sub { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-bottom: 16px; }
+    .ruler-wrap { position: relative; padding: 16px 0 8px 0; }
+    .ruler-track {
         display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 12px;
-        gap: 8px;
-    }
-    .token-rail-title { font-size: 12px; line-height: 16px; color: #9B9B9B; font-weight: 600; }
-    .token-rail-sub { font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #616161; }
-    .specimen-url-bar {
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 12px;
-        font-family: 'Geist Mono', monospace;
-        font-size: 14px;
-        line-height: 24px;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 4px;
-        word-break: break-all;
-    }
-    .specimen-token {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 8px;
+        height: 8px;
         border-radius: 4px;
+        overflow: hidden;
         border: 1px solid #272727;
-        background-color: #181818;
     }
-    .specimen-token-risk { color: #e57373; border-color: #e57373; }
-    .specimen-token-safe { color: #81c784; border-color: #272727; }
-    .specimen-token-neutral { color: #9B9B9B; border-color: #272727; }
-    .specimen-delta { font-size: 12px; line-height: 16px; color: #9B9B9B; font-variant-numeric: tabular-nums; }
-    .token-rail-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .token-rail-cell {
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        border-radius: 8px;
-        padding: 12px;
+    .ruler-zone-safe { width: 50%; background-color: #000000; }
+    .ruler-zone-warn { width: 20%; background-color: #1F1F1F; }
+    .ruler-zone-crit { width: 30%; background-color: #313131; }
+    .ruler-threshold { position: absolute; left: 50%; top: 12px; bottom: 4px; width: 2px; background-color: #FFFFFF; opacity: 0.45; }
+    .ruler-needle {
+        position: absolute;
+        top: 8px;
+        width: 4px;
+        height: 24px;
+        border-radius: 2px;
+        transform: translateX(-50%);
+        transition: left 320ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease;
+    }
+    .ruler-legend {
         display: flex;
-        flex-direction: column;
         justify-content: space-between;
-        gap: 8px;
-        min-height: 96px;
-    }
-    .token-rail-type { font-size: 12px; line-height: 16px; color: #9B9B9B; font-weight: 500; }
-    .token-rail-val {
-        font-family: 'Geist Mono', monospace;
-        font-size: 14px;
-        line-height: 20px;
-        color: #FFFFFF;
-        font-weight: 500;
-        word-break: break-all;
-    }
-    .token-rail-badge {
-        display: inline-flex;
-        justify-content: space-between;
-        align-items: center;
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
+        color: #9B9B9B;
+        margin-bottom: 16px;
+    }
+
+    /* Architectural 1px Hairline Grids (zero one-sided borders) */
+    .hairline-grid-2, .hairline-grid-4, .hairline-grid-5, .hairline-rows {
+        display: grid;
+        gap: 1px;
+        background-color: #272727;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .hairline-grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .hairline-grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .hairline-grid-5 { grid-template-columns: repeat(5, 1fr); }
+    .hairline-rows { grid-template-columns: 1fr; }
+    .h-cell {
+        background-color: #000000;
+        padding: 12px;
+        min-width: 0;
+    }
+    .h-cell-surface { background-color: #181818; padding: 12px; min-width: 0; }
+    .cell-label {
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
         font-weight: 500;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background-color: #181818;
-        border: 1px solid #272727;
-        margin-top: 4px;
     }
-    .token-rail-badge-risk { color: #e57373; }
-    .token-rail-badge-safe { color: #81c784; }
-    .token-rail-badge-neutral { color: #9B9B9B; }
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-    .waterfall-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; margin-bottom: 24px; }
-    .kpi-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .kpi-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
-    .kpi-tile {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 16px;
-        text-align: left;
-    }
-    .kpi-title { font-size: 12px; line-height: 16px; color: #9B9B9B; font-weight: 600; }
-    .kpi-value {
+    .cell-value {
         font-family: 'Geist Mono', monospace;
-        font-size: 24px;
-        line-height: 32px;
+        font-size: 18px;
+        line-height: 28px;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
-        margin-top: 4px;
         color: #FFFFFF;
+        margin-top: 2px;
     }
-    .consensus-card {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 16px;
-    }
-    .consensus-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .consensus-title { font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; }
-    .consensus-pill {
-        font-family: 'Geist Mono', monospace;
-        font-size: 12px;
-        line-height: 16px;
-        padding: 2px 8px;
-        border-radius: 4px;
-        border: 1px solid #272727;
-        background-color: #1F1F1F;
-    }
-    .consensus-sub { font-size: 12px; line-height: 16px; color: #9B9B9B; margin-bottom: 16px; }
+
+    /* Consensus List */
     .consensus-row { margin-bottom: 12px; }
     .consensus-row:last-child { margin-bottom: 0; }
-    .consensus-row-top {
+    .consensus-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -423,147 +505,251 @@ PAGE_CSS = """
     }
     .consensus-name { color: #FFFFFF; font-weight: 500; }
     .consensus-meta { font-family: 'Geist Mono', monospace; color: #9B9B9B; font-variant-numeric: tabular-nums; }
-    .consensus-track { height: 8px; background-color: #272727; border-radius: 4px; overflow: hidden; }
-    .consensus-fill { height: 100%; border-radius: 4px; }
-    .ruler-wrap { position: relative; padding: 24px 0 8px 0; }
-    .ruler-track { display: flex; height: 12px; border-radius: 4px; overflow: hidden; border: 1px solid #272727; }
-    .ruler-zone-safe { width: 50%; background-color: #1F1F1F; }
-    .ruler-zone-warn { width: 20%; background-color: #272727; }
-    .ruler-zone-crit { width: 30%; background-color: #313131; }
-    .ruler-threshold { position: absolute; left: 50%; top: 16px; bottom: 4px; width: 2px; background-color: #616161; }
-    .ruler-needle { position: absolute; top: 12px; width: 4px; height: 24px; border-radius: 2px; transform: translateX(-50%); }
-    .ruler-tag {
-        position: absolute;
-        top: 0;
-        transform: translateX(-50%);
-        font-family: 'Geist Mono', monospace;
-        font-size: 12px;
-        line-height: 16px;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-        white-space: nowrap;
+    .bar-track { height: 6px; background-color: #272727; border-radius: 4px; overflow: hidden; }
+    .bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease;
     }
-    .ruler-legend {
+
+    /* Recourse Diff Stack */
+    .recourse-list { display: flex; flex-direction: column; gap: 12px; }
+    .recourse-item {
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px;
+    }
+    .recourse-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    .recourse-feat { font-family: 'Geist Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; }
+    .recourse-meta { font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #9B9B9B; margin-bottom: 8px; }
+    .recourse-bars { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .recourse-track { height: 4px; background-color: #272727; border-radius: 2px; overflow: hidden; }
+    .recourse-fill { height: 100%; border-radius: 2px; transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+    .recourse-copy { font-size: 12px; line-height: 16px; color: #9B9B9B; }
+
+    /* URL X-Ray Anatomy Specimen */
+    .specimen-url-bar {
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        font-family: 'Geist Mono', monospace;
+        font-size: 18px;
+        line-height: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        word-break: break-all;
+    }
+    .specimen-token {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid #272727;
+        background-color: #181818;
+    }
+    .specimen-token-risk { color: #e57373; border-color: #e57373; }
+    .specimen-token-safe { color: #81c784; border-color: #313131; }
+    .specimen-token-neutral { color: #9B9B9B; border-color: #272727; }
+    .specimen-delta { font-size: 12px; line-height: 16px; color: #9B9B9B; font-variant-numeric: tabular-nums; }
+    .rail-val {
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+        line-height: 20px;
+        color: #FFFFFF;
+        word-break: break-all;
+        margin: 4px 0 8px 0;
+    }
+    .rail-badge {
         display: flex;
         justify-content: space-between;
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
-        color: #9B9B9B;
-        margin-top: 8px;
     }
-    .plot-card {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 12px;
+
+    /* Unified Diverging Butterfly Attribution Rows */
+    .attr-row {
+        background-color: #000000;
+        padding: 12px 16px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) auto minmax(180px, 1fr) 72px;
+        gap: 16px;
+        align-items: center;
+        transition: background-color 150ms ease;
     }
-    .ledger-card {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 16px;
-        height: 100%;
-    }
-    .ledger-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: 'Geist Mono', monospace;
+    .attr-row:hover { background-color: #181818; }
+    .attr-extra-hidden { display: none; }
+    .attr-feat-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .attr-name { font-family: 'Geist Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; }
+    .attr-domain {
         font-size: 12px;
         line-height: 16px;
+        color: #9B9B9B;
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 4px;
+        padding: 0 8px;
     }
-    .ledger-table th { color: #9B9B9B; font-weight: 500; text-align: left; padding: 8px; }
-    .ledger-table td { padding: 8px; font-variant-numeric: tabular-nums; }
-    .ledger-row-risk { color: #e57373; }
-    .ledger-row-safe { color: #81c784; }
-    .ledger-row-total { font-weight: 600; color: #FFFFFF; }
-    .evidence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-    .evidence-card { background-color: #181818; border: 1px solid #272727; border-radius: 12px; padding: 16px; }
-    .evidence-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .evidence-name { font-family: 'Geist Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 600; word-break: break-all; }
-    .evidence-pill {
+    .attr-copy { font-size: 12px; line-height: 16px; color: #9B9B9B; margin-top: 4px; }
+    .state-toggle-group {
+        display: inline-flex;
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 6px;
+        padding: 2px;
+        gap: 2px;
+    }
+    .state-pill {
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
         font-weight: 500;
-        padding: 2px 8px;
+        color: #9B9B9B;
+        background-color: transparent;
+        border: none;
         border-radius: 4px;
-        border: 1px solid #272727;
-        background-color: #1F1F1F;
-        flex-shrink: 0;
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: background-color 150ms ease, color 150ms ease, transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .evidence-value { font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #9B9B9B; margin-top: 8px; }
-    .evidence-text { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-top: 8px; }
-    .recourse-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
-    .recourse-card { background-color: #181818; border: 1px solid #272727; border-radius: 12px; padding: 16px; }
-    .recourse-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .recourse-name { font-family: 'Geist Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; }
-    .recourse-badge {
+    .state-pill:hover { background-color: #272727; color: #FFFFFF; }
+    .state-pill.active-risk { background-color: #e57373; color: #000000; font-weight: 600; }
+    .state-pill.active-warn { background-color: #ffb74d; color: #000000; font-weight: 600; }
+    .state-pill.active-safe { background-color: #FFFFFF; color: #000000; font-weight: 600; }
+
+    /* Diverging Butterfly Zero Axis */
+    .butterfly-wrap {
+        position: relative;
+        height: 24px;
+        display: flex;
+        align-items: center;
+    }
+    .butterfly-track {
+        position: relative;
+        width: 100%;
+        height: 8px;
+        background-color: #1F1F1F;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .butterfly-zero {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #616161;
+        transform: translateX(-50%);
+        z-index: 2;
+    }
+    .butterfly-fill-right {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        background-color: #e57373;
+        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .butterfly-fill-left {
+        position: absolute;
+        right: 50%;
+        top: 0;
+        bottom: 0;
+        background-color: #81c784;
+        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .attr-delta {
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
         font-weight: 600;
-        color: #81c784;
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        padding: 2px 8px;
-        border-radius: 4px;
-    }
-    .recourse-state { font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #9B9B9B; margin-bottom: 12px; }
-    .recourse-delta-row {
-        display: flex;
-        justify-content: space-between;
-        font-family: 'Geist Mono', monospace;
-        font-size: 12px;
-        line-height: 16px;
-        color: #9B9B9B;
-        margin-bottom: 4px;
+        text-align: right;
         font-variant-numeric: tabular-nums;
     }
-    .recourse-bars { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-    .recourse-track { height: 4px; border-radius: 2px; background-color: #272727; overflow: hidden; }
-    .recourse-fill { height: 100%; border-radius: 2px; }
-    .recourse-text { font-size: 14px; line-height: 20px; color: #9B9B9B; }
-    .console-table-wrap {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        overflow-x: auto;
-        margin-bottom: 24px;
+
+    /* Tab 2 Evaluation SVG & Confusion Matrix */
+    .eval-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
     }
-    .console-table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; }
-    .console-table th {
+    .range-input { width: 100%; accent-color: #FFFFFF; cursor: pointer; }
+    .svg-box { width: 100%; display: block; }
+    .cm-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background-color: #272727;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .cm-cell {
+        background-color: #000000;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 120px;
+    }
+    .cm-count {
+        font-family: 'Geist Mono', monospace;
+        font-size: 30px;
+        line-height: 36px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: #FFFFFF;
+    }
+    .global-row {
+        display: grid;
+        grid-template-columns: 180px 1fr 64px;
+        gap: 12px;
+        align-items: center;
+        padding: 8px 12px;
+        background-color: #000000;
+    }
+
+    /* Hairline Console Table */
+    .table-row-8 { grid-template-columns: 1.5fr 1fr repeat(6, 0.8fr); }
+    .table-cell-head {
+        background-color: #181818;
+        padding: 12px;
         font-size: 12px;
         line-height: 16px;
         font-weight: 600;
         color: #9B9B9B;
-        padding: 12px 16px;
-        background-color: #1F1F1F;
     }
-    .console-table td { padding: 12px 16px; color: #FFFFFF; font-variant-numeric: tabular-nums; }
-    .console-badge {
-        font-family: 'Geist Mono', monospace;
-        font-size: 12px;
-        line-height: 16px;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        white-space: nowrap;
+    .table-cell {
+        background-color: #000000;
+        padding: 12px;
+        font-size: 14px;
+        line-height: 20px;
+        font-variant-numeric: tabular-nums;
     }
-    .section-title { font-size: 18px; line-height: 28px; font-weight: 600; margin: 0 0 4px 0; text-wrap: balance; }
-    .section-note { font-size: 14px; line-height: 20px; color: #9B9B9B; margin-bottom: 16px; }
-    .action-card { background-color: #181818; border: 1px solid #272727; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-    .slider-card {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
-        padding: 16px;
+
+    /* Feature Catalog Tab 3 */
+    .catalog-filters {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 12px;
         margin-bottom: 16px;
     }
-    .slider-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .range-input { width: 100%; accent-color: #FFFFFF; cursor: pointer; }
-    .catalog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; margin-bottom: 24px; }
+    .catalog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     .catalog-card {
         background-color: #181818;
         border: 1px solid #272727;
@@ -573,43 +759,67 @@ PAGE_CSS = """
         flex-direction: column;
         justify-content: space-between;
         gap: 12px;
+        transition: border-color 150ms ease;
     }
+    .catalog-card:hover { border-color: #313131; }
     .catalog-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .catalog-name { font-family: 'Geist Mono', monospace; font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; word-break: break-all; }
-    .catalog-badge {
-        font-family: 'Geist Mono', monospace;
-        font-size: 12px;
-        line-height: 16px;
-        padding: 2px 8px;
-        border-radius: 4px;
-        background-color: #1F1F1F;
-        border: 1px solid #272727;
-        flex-shrink: 0;
-    }
-    .catalog-domain { font-size: 12px; line-height: 16px; color: #9B9B9B; margin-top: 4px; }
-    .catalog-desc { font-size: 14px; line-height: 20px; color: #FFFFFF; }
     .catalog-rule {
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
         color: #9B9B9B;
-        background-color: #1F1F1F;
+        background-color: #000000;
         border: 1px solid #272727;
         border-radius: 8px;
         padding: 8px 12px;
         word-break: break-word;
     }
-    .prev-head { display: flex; justify-content: space-between; font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #9B9B9B; margin-bottom: 4px; }
-    .prev-track { display: flex; height: 8px; border-radius: 4px; background-color: #272727; overflow: hidden; }
-    .prev-legend { display: flex; justify-content: space-between; font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 16px; color: #9B9B9B; margin-top: 4px; }
-    .footer-note { text-align: center; font-size: 12px; line-height: 16px; color: #9B9B9B; padding: 16px 0; margin-top: 32px; }
-    @media (max-width: 900px) {
-        .preset-grid, .sandbox-grid, .token-rail-grid, .kpi-grid-4 { grid-template-columns: repeat(2, 1fr); }
-        .form-row, .uci-bar, .two-col, .waterfall-grid, .evidence-grid, .recourse-grid, .catalog-grid { grid-template-columns: 1fr; }
+    .prev-head, .prev-legend {
+        display: flex;
+        justify-content: space-between;
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+    }
+    .prev-track { display: flex; height: 8px; border-radius: 4px; background-color: #272727; overflow: hidden; margin: 4px 0; }
+    .footer-note { text-align: center; font-size: 12px; line-height: 16px; color: #9B9B9B; padding: 24px 0 0 0; }
+
+    @media (max-width: 1024px) {
+        .workbench-grid { grid-template-columns: 1fr; }
+        .dossier-sticky { position: static; }
+        .attr-row { grid-template-columns: 1fr; gap: 8px; }
+        .eval-split, .catalog-filters, .catalog-grid { grid-template-columns: 1fr; }
+        .hairline-grid-4, .hairline-grid-5 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .container { padding: 16px 16px 48px 16px; }
+        .hairline-grid-2, .hairline-grid-4, .hairline-grid-5 { grid-template-columns: 1fr; }
     }
 """
 
 CONSOLE_JS = """
+    function tweenTextNumber(el, targetVal, decimals, suffix) {
+        if (!el) return;
+        const startVal = parseFloat(el.dataset.val || String(targetVal));
+        el.dataset.val = String(targetVal);
+        if (Math.abs(targetVal - startVal) < 0.01) {
+            el.textContent = targetVal.toFixed(decimals) + suffix;
+            return;
+        }
+        const t0 = performance.now();
+        const dur = 260;
+        function step(now) {
+            const p = Math.min(1, (now - t0) / dur);
+            const eased = 1 - Math.pow(1 - p, 3);
+            const cur = startVal + (targetVal - startVal) * eased;
+            el.textContent = cur.toFixed(decimals) + suffix;
+            if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
     function switchTab(tabName) {
         document.querySelectorAll('.tab-btn').forEach(b => {
             b.classList.toggle('active', b.dataset.tab === tabName);
@@ -617,76 +827,7 @@ CONSOLE_JS = """
         document.querySelectorAll('.tab-panel').forEach(p => {
             p.classList.toggle('active', p.id === 'panel-' + tabName);
         });
-        if (tabName === 'eval') {
-            drawEvalCharts();
-        } else if (tabName === 'inspect' && window.__lastWaterfall) {
-            drawWaterfall(window.__lastWaterfall);
-        }
-    }
-
-    function drawWaterfall(wf) {
-        window.__lastWaterfall = wf;
-        if (!window.Plotly || !document.getElementById('waterfall-plot')) return;
-        const trace = {
-            type: 'waterfall',
-            orientation: 'v',
-            measure: wf.measures,
-            x: wf.x,
-            y: wf.y,
-            text: wf.texts,
-            textposition: 'outside',
-            textfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' },
-            connector: { line: { color: '#313131', width: 1, dash: 'dot' } },
-            decreasing: { marker: { color: '#81c784' } },
-            increasing: { marker: { color: '#e57373' } },
-            totals: { marker: { color: '#FFFFFF' } }
-        };
-        const layout = {
-            paper_bgcolor: '#181818',
-            plot_bgcolor: '#181818',
-            font: { family: 'Geist, sans-serif', color: '#9B9B9B' },
-            margin: { l: 48, r: 16, t: 24, b: 48 },
-            height: 320,
-            xaxis: { gridcolor: '#272727', tickfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' } },
-            yaxis: {
-                gridcolor: '#272727',
-                zerolinecolor: '#313131',
-                title: { text: 'Log odds impact', font: { family: 'Geist', size: 12, color: '#9B9B9B' } },
-                tickfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' }
-            },
-            showlegend: false
-        };
-        Plotly.react('waterfall-plot', [trace], layout, { displayModeBar: false, responsive: true });
-    }
-
-    function syncSandboxValues(fv) {
-        if (!fv) return;
-        Object.keys(fv).forEach(k => {
-            const el = document.getElementById('sbx-' + k);
-            if (el) el.value = String(fv[k]);
-        });
-    }
-
-    async function loadDiagnosis(params) {
-        const qs = new URLSearchParams(params).toString();
-        const res = await fetch('/api/diagnose?' + qs);
-        if (!res.ok) return;
-        const data = await res.json();
-        document.getElementById('inspect-results').innerHTML = data.html;
-        if (data.mode === 'uci' && data.url) {
-            document.getElementById('uci-url-text').textContent = data.url;
-            const pill = document.getElementById('uci-truth-pill');
-            pill.textContent = 'Ground truth: ' + data.true_label.toLowerCase();
-            pill.style.color = data.true_label === 'Phishing' ? '#e57373' : '#81c784';
-            document.getElementById('uci-idx-input').value = String(data.idx);
-        }
-        if (data.mode === 'live' && data.feature_values) {
-            syncSandboxValues(data.feature_values);
-            if (data.clean_url) {
-                document.getElementById('live-url-display').textContent = data.clean_url;
-            }
-        }
-        drawWaterfall(data.waterfall);
+        if (tabName === 'eval') drawEvalCharts();
     }
 
     function setInspectMode(mode) {
@@ -694,6 +835,7 @@ CONSOLE_JS = """
         document.getElementById('mode-btn-live').classList.toggle('active', mode === 'live');
         document.getElementById('controls-uci').style.display = mode === 'uci' ? 'block' : 'none';
         document.getElementById('controls-live').style.display = mode === 'live' ? 'block' : 'none';
+        window.__liveOverrides = {};
         if (mode === 'uci') {
             const idx = document.getElementById('uci-idx-input').value || '835';
             loadDiagnosis({ mode: 'uci', idx });
@@ -703,30 +845,79 @@ CONSOLE_JS = """
         }
     }
 
+    async function loadDiagnosis(params) {
+        const container = document.getElementById('inspect-results');
+        const prevScoreEl = document.getElementById('verdict-score-num');
+        const prevScore = prevScoreEl ? parseFloat(prevScoreEl.dataset.val || prevScoreEl.textContent) : null;
+        const qs = new URLSearchParams(params).toString();
+        const res = await fetch('/api/diagnose?' + qs);
+        if (!res.ok) return;
+        const data = await res.json();
+        container.innerHTML = data.html;
+        if (data.mode === 'uci' && data.url) {
+            document.getElementById('uci-url-text').textContent = data.url;
+            const pill = document.getElementById('uci-truth-pill');
+            pill.textContent = 'Ground truth: ' + data.true_label.toLowerCase();
+            pill.style.color = data.true_label === 'Phishing' ? '#e57373' : '#81c784';
+            document.getElementById('uci-idx-input').value = String(data.idx);
+            const ctr = document.getElementById('uci-record-counter');
+            if (ctr) ctr.textContent = '#' + (data.idx + 1) + ' of 1,659';
+        }
+        if (data.mode === 'live') {
+            const rst = document.getElementById('reset-overrides-btn');
+            if (rst) rst.style.display = data.has_overrides ? 'inline-flex' : 'none';
+        }
+        const newScoreEl = document.getElementById('verdict-score-num');
+        if (newScoreEl && prevScore !== null && !Number.isNaN(prevScore)) {
+            newScoreEl.dataset.val = String(prevScore);
+            tweenTextNumber(newScoreEl, data.risk_pct, 1, '%');
+        }
+    }
+
     function scanPreset(url) {
+        window.__liveOverrides = {};
         document.getElementById('live-url-input').value = url;
         loadDiagnosis({ mode: 'live', url });
     }
 
     function submitLiveScan(ev) {
         ev.preventDefault();
+        window.__liveOverrides = {};
         const url = document.getElementById('live-url-input').value.trim();
         if (url) loadDiagnosis({ mode: 'live', url });
     }
 
-    function onSandboxChange() {
+    function setFeatureOverride(idx, val) {
+        window.__liveOverrides = window.__liveOverrides || {};
+        window.__liveOverrides['f_' + idx] = val;
         const url = document.getElementById('live-url-input').value.trim();
-        const params = { mode: 'live', url };
-        document.querySelectorAll('.sbx-select').forEach(el => {
-            params['f_' + el.dataset.idx] = el.value;
-        });
-        loadDiagnosis(params);
+        loadDiagnosis(Object.assign({ mode: 'live', url }, window.__liveOverrides));
+    }
+
+    function resetLiveOverrides() {
+        window.__liveOverrides = {};
+        const url = document.getElementById('live-url-input').value.trim();
+        loadDiagnosis({ mode: 'live', url });
     }
 
     function pickRandomUci() {
         const total = window.__evalData ? window.__evalData.y_true.length : 1659;
-        const idx = Math.floor(Math.random() * total);
-        loadDiagnosis({ mode: 'uci', idx });
+        loadDiagnosis({ mode: 'uci', idx: Math.floor(Math.random() * total) });
+    }
+
+    function stepUci(delta) {
+        const total = window.__evalData ? window.__evalData.y_true.length : 1659;
+        const cur = parseInt(document.getElementById('uci-idx-input').value || '835', 10);
+        const nxt = (cur + delta + total) % total;
+        loadDiagnosis({ mode: 'uci', idx: nxt });
+    }
+
+    function toggleUciRows(showAll) {
+        document.getElementById('uci-top-btn').classList.toggle('active', !showAll);
+        document.getElementById('uci-all-btn').classList.toggle('active', showAll);
+        document.querySelectorAll('.attr-extra-row').forEach(el => {
+            el.classList.toggle('attr-extra-hidden', !showAll);
+        });
     }
 
     function computeThresholdStats(thresh) {
@@ -744,90 +935,88 @@ CONSOLE_JS = """
         const recall = tp / Math.max(1, tp + fn);
         const f1 = (precision + recall) > 0 ? (2 * precision * recall / (precision + recall)) : 0;
         const fpr = fp / Math.max(1, tn + fp);
-        return { precision, recall, f1, fp, fn, fpr, cm: [[tn, fp], [fn, tp]] };
+        return { precision, recall, f1, tp, fp, tn, fn, fpr, total: yt.length };
+    }
+
+    function rocPointsAttr(fprArr, tprArr) {
+        const x0 = 56, y0 = 256, w = 440, h = 236;
+        return fprArr.map((fx, i) => (x0 + fx * w).toFixed(1) + ',' + (y0 - tprArr[i] * h).toFixed(1)).join(' ');
     }
 
     function drawEvalCharts() {
-        if (!window.Plotly || !window.__evalData || !document.getElementById('roc-plot')) return;
-        const slider = document.getElementById('threshold-slider');
-        const thresh = parseFloat(slider ? slider.value : '0.50');
-        const stats = computeThresholdStats(thresh);
+        if (!window.__evalData || !document.getElementById('threshold-slider')) return;
+        const thresh = parseFloat(document.getElementById('threshold-slider').value);
+        const s = computeThresholdStats(thresh);
 
         document.getElementById('thresh-readout').textContent = thresh.toFixed(2);
         document.getElementById('kpi-prec-lbl').textContent = 'Precision at ' + thresh.toFixed(2);
         document.getElementById('kpi-rec-lbl').textContent = 'Recall at ' + thresh.toFixed(2);
         document.getElementById('kpi-f1-lbl').textContent = 'F1 score at ' + thresh.toFixed(2);
-        document.getElementById('kpi-prec-val').textContent = (stats.precision * 100).toFixed(2) + '%';
-        document.getElementById('kpi-rec-val').textContent = (stats.recall * 100).toFixed(2) + '%';
-        document.getElementById('kpi-f1-val').textContent = stats.f1.toFixed(4);
-        document.getElementById('kpi-fpfn-val').textContent = stats.fp + ' / ' + stats.fn;
-        document.getElementById('cm-title').textContent = 'Confusion matrix at threshold ' + thresh.toFixed(2);
+        document.getElementById('kpi-prec-val').textContent = (s.precision * 100).toFixed(2) + '%';
+        document.getElementById('kpi-rec-val').textContent = (s.recall * 100).toFixed(2) + '%';
+        document.getElementById('kpi-f1-val').textContent = s.f1.toFixed(4);
+        document.getElementById('kpi-fpfn-val').textContent = s.fp + ' / ' + s.fn;
 
-        const roc = window.__evalData.roc;
-        const rocTraces = [
-            { x: [0, 1], y: [0, 1], mode: 'lines', showlegend: false, line: { dash: 'dash', color: '#313131', width: 1 } },
-            { x: roc.xgb30.fpr, y: roc.xgb30.tpr, mode: 'lines', name: 'XGBoost thirty features', line: { color: '#FFFFFF', width: 1.5 } },
-            { x: roc.rf30.fpr, y: roc.rf30.tpr, mode: 'lines', name: 'Random Forest', line: { color: '#9B9B9B', width: 1.5 } },
-            { x: roc.xgb8.fpr, y: roc.xgb8.tpr, mode: 'lines', name: 'XGBoost eight features', line: { color: '#616161', width: 1.5 } },
-            { x: [stats.fpr], y: [stats.recall], mode: 'markers', name: 'Active threshold', marker: { color: '#e57373', size: 8, line: { color: '#FFFFFF', width: 1.5 } } }
-        ];
-        Plotly.react('roc-plot', rocTraces, {
-            paper_bgcolor: '#181818', plot_bgcolor: '#181818',
-            font: { family: 'Geist, sans-serif', color: '#9B9B9B' },
-            margin: { l: 48, r: 16, t: 16, b: 40 }, height: 280,
-            xaxis: { title: 'False positive rate', gridcolor: '#272727', tickfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' } },
-            yaxis: { title: 'True positive rate', gridcolor: '#272727', tickfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' } },
-            legend: { yanchor: 'bottom', y: 0.05, xanchor: 'right', x: 0.95, font: { family: 'Geist', size: 11, color: '#9B9B9B' } }
-        }, { displayModeBar: false, responsive: true });
+        const cx = (56 + s.fpr * 440).toFixed(1);
+        const cy = (256 - s.recall * 236).toFixed(1);
+        const dot = document.getElementById('roc-active-dot');
+        const gx = document.getElementById('roc-guide-x');
+        const gy = document.getElementById('roc-guide-y');
+        if (dot) { dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); }
+        if (gx) { gx.setAttribute('x1', cx); gx.setAttribute('x2', cx); gx.setAttribute('y1', cy); }
+        if (gy) { gy.setAttribute('y1', cy); gy.setAttribute('y2', cy); gy.setAttribute('x2', cx); }
+        const rocCoords = document.getElementById('roc-coords-label');
+        if (rocCoords) rocCoords.textContent = 'FPR ' + (s.fpr * 100).toFixed(2) + '%  TPR ' + (s.recall * 100).toFixed(2) + '%';
 
-        Plotly.react('cm-plot', [{
-            type: 'heatmap',
-            z: stats.cm,
-            x: ['Legitimate', 'Phishing'],
-            y: ['Legitimate', 'Phishing'],
-            text: stats.cm.map(r => r.map(v => String(v))),
-            texttemplate: '%{text}',
-            textfont: { family: 'Geist Mono', size: 14, color: '#FFFFFF' },
-            colorscale: [[0, '#1F1F1F'], [1, '#313131']],
-            showscale: false
-        }], {
-            paper_bgcolor: '#181818', plot_bgcolor: '#181818',
-            font: { family: 'Geist, sans-serif', color: '#FFFFFF' },
-            margin: { l: 80, r: 16, t: 16, b: 48 }, height: 280,
-            xaxis: { title: 'Predicted', tickfont: { family: 'Geist', color: '#FFFFFF' } },
-            yaxis: { title: 'Actual', autorange: 'reversed', tickfont: { family: 'Geist', color: '#FFFFFF' } }
-        }, { displayModeBar: false, responsive: true });
-
-        const gs = window.__evalData.global_shap.slice().reverse();
-        Plotly.react('global-shap-plot', [{
-            type: 'bar',
-            x: gs.map(d => d.mean_shap),
-            y: gs.map(d => d.feature),
-            orientation: 'h',
-            marker: { color: gs.map(d => d.is_live ? '#FFFFFF' : '#616161') },
-            text: gs.map(d => d.mean_shap.toFixed(3)),
-            textposition: 'outside',
-            textfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' }
-        }], {
-            paper_bgcolor: '#181818', plot_bgcolor: '#181818',
-            font: { family: 'Geist, sans-serif', color: '#9B9B9B' },
-            margin: { l: 192, r: 48, t: 16, b: 40 }, height: 360,
-            xaxis: { title: 'Mean absolute Shapley magnitude', gridcolor: '#272727', tickfont: { family: 'Geist Mono', size: 11, color: '#9B9B9B' } },
-            yaxis: { gridcolor: '#181818', tickfont: { family: 'Geist Mono', size: 11, color: '#FFFFFF' } },
-            showlegend: false
-        }, { displayModeBar: false, responsive: true });
+        [['tn', s.tn], ['fp', s.fp], ['fn', s.fn], ['tp', s.tp]].forEach(([k, val]) => {
+            const pct = (val * 100 / Math.max(1, s.total)).toFixed(1);
+            document.getElementById('cm-' + k + '-cnt').textContent = String(val);
+            document.getElementById('cm-' + k + '-pct').textContent = pct + '% of test set';
+            document.getElementById('cm-' + k + '-bar').style.width = pct + '%';
+        });
     }
 
     function filterCatalog() {
+        const q = (document.getElementById('cat-search-input').value || '').toLowerCase().trim();
         const domain = document.getElementById('cat-domain-select').value;
         const mode = document.getElementById('cat-mode-select').value;
+        let visible = 0, total = 0;
         document.querySelectorAll('.catalog-card').forEach(card => {
+            total++;
             const okDomain = (domain === 'All domains') || (card.dataset.domain === domain);
             const okMode = (mode === 'All features') || (card.dataset.mode === mode);
-            card.style.display = (okDomain && okMode) ? 'flex' : 'none';
+            const okQuery = !q || (card.dataset.search || '').includes(q);
+            const show = okDomain && okMode && okQuery;
+            card.style.display = show ? 'flex' : 'none';
+            if (show) visible++;
         });
+        const badge = document.getElementById('cat-match-count');
+        if (badge) badge.textContent = visible + ' of ' + total + ' features';
     }
 """
+
+
+def _clean_copy(text):
+    """Sanitizes copy strings to avoid ASCII hyphens and arrows in UI prose."""
+    out = str(text)
+    for old, new in COPY_REPLACEMENTS:
+        out = out.replace(old, new)
+    return out
+
+
+def _fmt_delta(val, decimals=4):
+    """Formats signed floating point delta using Unicode minus without ASCII hyphen."""
+    sign = "+" if val >= 0 else "\u2212"
+    return f"{sign}{abs(val):.{decimals}f}"
+
+
+def _fmt_state_val(val):
+    """Formats discrete state value (+1, 0, -1) using Unicode minus."""
+    if val < 0:
+        return "\u22121"
+    if val > 0:
+        return "+1"
+    return "0"
 
 
 def load_runtime_data():
@@ -855,12 +1044,12 @@ def risk_tone(risk_pct):
 
 
 def _token_tone_and_delta(shap_val):
-    """Maps a Shapley log odds value to rail badge class, span class, and signed label."""
+    """Maps a Shapley log odds value to badge color, span class, and signed delta."""
     if shap_val > 0.01:
-        return "token-rail-badge-risk", "specimen-token-risk", f"+{shap_val:.3f}"
+        return TONE_COLORS["critical"], "specimen-token-risk", _fmt_delta(shap_val, 3)
     if shap_val < -0.01:
-        return "token-rail-badge-safe", "specimen-token-safe", f"{shap_val:.3f}"
-    return "token-rail-badge-neutral", "specimen-token-neutral", "0.000"
+        return TONE_COLORS["safe"], "specimen-token-safe", _fmt_delta(shap_val, 3)
+    return "#9B9B9B", "specimen-token-neutral", "0.000"
 
 
 def _extract_subdomain_and_host(netloc):
@@ -923,8 +1112,8 @@ def _assemble_attributions(features, vals, shaps, catalog):
             "shap_value": round(float(s_val), 4),
             "abs_impact": round(abs(float(s_val)), 4),
             "pushes_toward": "Phishing" if is_risk else "Legitimate",
-            "group": meta.get("group", "General"),
-            "human_text": meta.get(key, "Feature impacts phishing probability."),
+            "group": _clean_copy(meta.get("group", "General")),
+            "human_text": _clean_copy(meta.get(key, "Feature impacts phishing probability.")),
         })
     out.sort(key=lambda item: item["abs_impact"], reverse=True)
     return out
@@ -970,14 +1159,15 @@ def _valid_override(idx, val, vec_len):
 
 
 def _apply_live_overrides(feats_dict, overrides):
-    """Applies optional integer overrides for interactive what if sandbox controls."""
-    vec = [int(feats_dict[f]) for f in LIVE_FEATURES]
+    """Applies optional integer overrides and returns vector plus changed flag."""
+    base_vec = [int(feats_dict[f]) for f in LIVE_FEATURES]
     if not overrides:
-        return vec
+        return base_vec, False
+    vec = list(base_vec)
     for idx, val in overrides.items():
         if _valid_override(idx, val, len(vec)):
             vec[idx] = val
-    return vec
+    return vec, vec != base_vec
 
 
 def diagnose_live(raw_url, overrides=None):
@@ -986,16 +1176,17 @@ def diagnose_live(raw_url, overrides=None):
     bundle = data["bundle"]
     clean_url = sanitize_url(raw_url or DEFAULT_LIVE_URL)
     extracted = extract_live_lexical_features(clean_url)
-    vec = _apply_live_overrides(extracted, overrides)
-    entry = bundle["live_grid"][",".join(str(v) for v in vec)]
+    vec, has_overrides = _apply_live_overrides(extracted, overrides)
+    entry = bundle["live_grid"][",".join(map(str, vec))]
     attributions = _assemble_attributions(LIVE_FEATURES, vec, entry["shaps"], data["catalog"])
     return {
         "clean_url": clean_url,
+        "has_overrides": has_overrides,
         "feature_values": dict(zip(LIVE_FEATURES, vec)),
         "prediction": "Phishing" if entry["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": entry["prob"],
         "base_value": bundle["live_base_value"],
-        "top_drivers": attributions[:8],
+        "top_drivers": attributions,
         "all_features": attributions,
         "group_breakdown": _aggregate_groups(attributions),
         "counterfactual_hints": entry["hints"],
@@ -1019,7 +1210,7 @@ def diagnose_uci(idx):
         "prediction": "Phishing" if rec["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": rec["prob"],
         "base_value": data["bundle"]["full_base_value"],
-        "top_drivers": attributions[:8],
+        "top_drivers": attributions,
         "all_features": attributions,
         "group_breakdown": _aggregate_groups(attributions),
         "counterfactual_hints": rec["hints"],
@@ -1027,38 +1218,99 @@ def diagnose_uci(idx):
     }
 
 
-def _render_verdict_html(title, subtitle, risk_pct):
-    """Renders headline classification card and flat risk bar."""
+def _render_verdict_dossier_card(title, subtitle, risk_pct, result, sec_title, sec_val):
+    """Renders left dossier verdict hero, integrated threshold ruler, and 2x2 hairline telemetry."""
     color = TONE_COLORS[risk_tone(risk_pct)]
+    clamped = min(98.0, max(2.0, risk_pct))
+    base_v = result["base_value"]
+    net_m = sum(d["shap_value"] for d in result["all_features"]) + base_v
     return (
-        f'<div class="verdict-card"><div class="verdict-top"><div>'
-        f'<div class="verdict-eyebrow"><span class="verdict-dot" style="background-color: {color};"></span>'
-        f'Automated classification</div>'
+        f'<div class="panel workbench-fade">'
+        f'<div class="verdict-eyebrow"><span class="verdict-dot" style="background-color: {color};"></span>Automated classification</div>'
+        f'<div class="verdict-score-row">'
+        f'<div id="verdict-score-num" class="verdict-score-value" data-val="{risk_pct:.1f}" style="color: {color};">{risk_pct:.1f}%</div>'
+        f'<span class="status-pill" style="color: {color};">Threshold 50.0%</span></div>'
         f'<div class="verdict-title" style="color: {color};">{html.escape(title)}</div>'
-        f'<div class="verdict-sub">{html.escape(subtitle)}</div></div>'
-        f'<div class="verdict-score"><div class="verdict-score-label">Probability of phishing</div>'
-        f'<div class="verdict-score-value" style="color: {color};">{risk_pct:.1f}%</div></div></div>'
-        f'<div class="verdict-track"><div class="verdict-fill" style="width: {risk_pct:.1f}%; background-color: {color};"></div></div></div>'
+        f'<div class="verdict-sub">{html.escape(subtitle)}</div>'
+        f'<div class="ruler-wrap"><div class="ruler-track"><div class="ruler-zone-safe"></div><div class="ruler-zone-warn"></div><div class="ruler-zone-crit"></div></div>'
+        f'<div class="ruler-threshold"></div><div class="ruler-needle" style="left: {clamped:.1f}%; background-color: {color};"></div></div>'
+        f'<div class="ruler-legend"><span>0% Safe</span><span>50% Cutoff</span><span>100% Phish</span></div>'
+        f'<div class="hairline-grid-2">'
+        f'<div class="h-cell"><div class="cell-label">Safe probability</div><div class="cell-value" style="color: {TONE_COLORS["safe"]};">{100.0 - risk_pct:.1f}%</div></div>'
+        f'<div class="h-cell"><div class="cell-label">{html.escape(sec_title)}</div><div class="cell-value">{html.escape(sec_val)}</div></div>'
+        f'<div class="h-cell"><div class="cell-label">Base prior log odds</div><div class="cell-value">{_fmt_delta(base_v, 3)}</div></div>'
+        f'<div class="h-cell"><div class="cell-label">Net log odds margin</div><div class="cell-value">{_fmt_delta(net_m, 3)}</div></div>'
+        f'</div></div>'
     )
 
 
-def _format_specimen_span(txt, shap_val):
-    """Formats one highlighted inline segment span inside the URL specimen banner."""
-    _, span_cls, delta_str = _token_tone_and_delta(shap_val)
+def _format_consensus_row_html(entry):
+    """Formats one progress bar row in the multi model consensus card."""
+    is_phish = entry["verdict"] == "Phishing"
+    color = TONE_COLORS["critical"] if is_phish else TONE_COLORS["safe"]
+    pct = min(100.0, max(0.0, float(entry["prob_pct"])))
     return (
-        f'<span class="specimen-token {span_cls}">{html.escape(txt)}'
-        f'<span class="specimen-delta">{delta_str}</span></span>'
+        f'<div class="consensus-row"><div class="consensus-top">'
+        f'<span class="consensus-name">{html.escape(entry["name"])}</span>'
+        f'<span class="consensus-meta"><span style="color: {color};">'
+        f'{html.escape(entry["verdict"])}</span> {pct:.1f}%</span></div>'
+        f'<div class="bar-track"><div class="bar-fill" style="width: {pct:.1f}%; '
+        f'background-color: {color};"></div></div></div>'
     )
 
 
-def _format_rail_cell_html(type_lbl, val_str, feat_lbl, shap_val):
-    """Formats one compartment cell inside the five cell telemetry rail."""
-    badge_cls, _, delta_str = _token_tone_and_delta(shap_val)
+def _consensus_header_meta(c_rows):
+    """Computes consensus pill label and tone across evaluators."""
+    phish_votes = sum(1 for r in c_rows if r["verdict"] == "Phishing")
+    maj = max(phish_votes, len(c_rows) - phish_votes)
+    maj_lbl = "phishing" if phish_votes >= len(c_rows) - phish_votes else "legitimate"
+    color = TONE_COLORS["critical"] if maj_lbl == "phishing" else TONE_COLORS["safe"]
+    return f"{maj} of {len(c_rows)} predict {maj_lbl}", color
+
+
+def _render_consensus_card(result):
+    """Renders three model consensus card inside the left sticky dossier."""
+    c_rows = result["consensus"]
+    sum_text, sum_color = _consensus_header_meta(c_rows)
+    bars = "".join(map(_format_consensus_row_html, c_rows))
     return (
-        f'<div class="token-rail-cell"><div><div class="token-rail-type">{html.escape(type_lbl)}</div>'
-        f'<div class="token-rail-val">{html.escape(val_str)}</div></div>'
-        f'<div class="token-rail-badge {badge_cls}">'
-        f'<span>{html.escape(feat_lbl)}</span><span>{delta_str}</span></div></div>'
+        f'<div class="panel workbench-fade"><div class="panel-head">'
+        f'<span class="panel-title">Multi model consensus</span>'
+        f'<span class="status-pill" style="color: {sum_color};">{sum_text}</span></div>'
+        f'{bars}</div>'
+    )
+
+
+def _format_recourse_item(hint, current_risk_pct):
+    """Formats one compact counterfactual diff card for the left dossier."""
+    cur_lbl = "suspicious" if hint["current_value"] == 0 else "phishing"
+    new_pct = round(hint["new_phishing_probability"] * 100.0, 1)
+    new_color = TONE_COLORS["safe"] if new_pct < 50 else TONE_COLORS["warning"]
+    return (
+        f'<div class="recourse-item"><div class="recourse-head">'
+        f'<span class="recourse-feat">{html.escape(hint["feature"])}</span>'
+        f'<span class="status-pill" style="color: #81c784;">Down {hint["risk_reduction_pct"]:.1f}%</span></div>'
+        f'<div class="recourse-meta">{cur_lbl} &#8594; legitimate norm ({current_risk_pct:.1f}% &#8594; {new_pct:.1f}%)</div>'
+        f'<div class="recourse-bars">'
+        f'<div class="recourse-track"><div class="recourse-fill" style="width: {min(100.0, max(0.0, current_risk_pct)):.1f}%; background-color: #e57373;"></div></div>'
+        f'<div class="recourse-track"><div class="recourse-fill" style="width: {min(100.0, max(0.0, new_pct)):.1f}%; background-color: {new_color};"></div></div>'
+        f'</div><div class="recourse-copy">{html.escape(_clean_copy(hint["guidance"]))}</div></div>'
+    )
+
+
+def _render_recourse_card(hints, current_risk_pct):
+    """Renders counterfactual recourse diff list or clean baseline notice."""
+    if not hints:
+        body = (
+            '<div class="recourse-item"><div style="font-size: 14px; font-weight: 600;">Clean baseline structure</div>'
+            '<div class="recourse-copy" style="margin-top: 4px;">No single change lowers the score noticeably. Evaluated properties match legitimate norms.</div></div>'
+        )
+    else:
+        body = f'<div class="recourse-list">{"".join(_format_recourse_item(h, current_risk_pct) for h in hints[:3])}</div>'
+    return (
+        f'<div class="panel workbench-fade"><div class="panel-head">'
+        f'<span class="panel-title">Actionable recourse</span>'
+        f'<span class="panel-meta">Minimal flip impact</span></div>{body}</div>'
     )
 
 
@@ -1076,434 +1328,393 @@ def _specimen_segments(tokens, cells):
     return [(txt, s) for txt, s in candidates if txt]
 
 
-def _render_token_rail_html(url, result):
-    """Renders inline annotated URL specimen banner and five cell telemetry rail."""
+def _render_anatomy_card(url, result):
+    """Renders interactive URL specimen ribbon and five cell hairline token strip."""
     tokens = _parse_url_tokens(url)
     shaps = {item["feature"]: item["shap_value"] for item in result["all_features"]}
     cells = _resolve_rail_cells(tokens, shaps)
-    spans = "".join(_format_specimen_span(txt, s) for txt, s in _specimen_segments(tokens, cells))
-    boxes = "".join(_format_rail_cell_html(t, v, f, s) for t, v, f, s in cells)
+    spans = "".join(
+        f'<span class="specimen-token {_token_tone_and_delta(s)[1]}">{html.escape(txt)}'
+        f'<span class="specimen-delta">{_token_tone_and_delta(s)[2]}</span></span>'
+        for txt, s in _specimen_segments(tokens, cells)
+    )
+    boxes = "".join(
+        f'<div class="h-cell"><div class="cell-label">{html.escape(t)}</div>'
+        f'<div class="rail-val">{html.escape(v)}</div>'
+        f'<div class="rail-badge"><span style="color: #9B9B9B;">{html.escape(f)}</span>'
+        f'<span style="color: {_token_tone_and_delta(s)[0]};">{_token_tone_and_delta(s)[2]}</span></div></div>'
+        for t, v, f, s in cells
+    )
     return (
-        f'<div class="token-rail-deck"><div class="token-rail-header">'
-        f'<span class="token-rail-title">Segmented address telemetry rail</span>'
-        f'<span class="token-rail-sub">Inline token decomposition with signed Shapley attribution</span></div>'
+        f'<div class="panel workbench-fade"><div class="panel-head">'
+        f'<span class="panel-title">Segmented URL anatomy</span>'
+        f'<span class="panel-meta">Signed TreeSHAP token attribution</span></div>'
         f'<div class="specimen-url-bar">{spans}</div>'
-        f'<div class="token-rail-grid">{boxes}</div></div>'
+        f'<div class="hairline-grid-5">{boxes}</div></div>'
     )
 
 
-def _format_consensus_row_html(entry):
-    """Formats one progress bar row in the multi model consensus card."""
-    is_phish = entry["verdict"] == "Phishing"
-    color = TONE_COLORS["critical"] if is_phish else TONE_COLORS["safe"]
-    pct = min(100.0, max(0.0, float(entry["prob_pct"])))
+STATE_TONE_COLOR_MAP = {-1: TONE_COLORS["critical"], 0: TONE_COLORS["warning"], 1: TONE_COLORS["safe"]}
+STATE_ACTIVE_CLASS_MAP = {-1: "active-risk", 0: "active-warn", 1: "active-safe"}
+TERNARY_LIVE_FEATURES = frozenset({"URL_Length", "having_Sub_Domain"})
+
+
+def _state_pill_button(idx, opt, current_val):
+    """Formats a single counterfactual state pill button for live mode."""
+    active_cls = STATE_ACTIVE_CLASS_MAP.get(opt, "") if opt == current_val else ""
     return (
-        f'<div class="consensus-row"><div class="consensus-row-top">'
-        f'<span class="consensus-name">{html.escape(entry["name"])}</span>'
-        f'<span class="consensus-meta"><span style="color: {color};">'
-        f'{html.escape(entry["verdict"])}</span> {pct:.1f}%</span></div>'
-        f'<div class="consensus-track"><div class="consensus-fill" style="width: {pct:.1f}%; '
-        f'background-color: {color};"></div></div></div>'
+        f'<button type="button" class="state-pill {active_cls}" onclick="setFeatureOverride({idx}, {opt})">'
+        f'{_fmt_state_val(opt)}</button>'
     )
 
 
-def _consensus_header_meta(c_rows):
-    """Computes consensus pill label and tone across evaluators."""
-    phish_votes = sum(1 for r in c_rows if r["verdict"] == "Phishing")
-    maj = max(phish_votes, len(c_rows) - phish_votes)
-    maj_lbl = "phishing" if phish_votes >= len(c_rows) - phish_votes else "legitimate"
-    color = "#e57373" if maj_lbl == "phishing" else "#81c784"
-    return f"{maj} of {len(c_rows)} predict {maj_lbl}", color
+def _format_state_control(mode, item):
+    """Renders interactive state buttons in live mode or state badge in UCI mode."""
+    feat = item["feature"]
+    val = item["value"]
+    if mode != "live":
+        cls_color = STATE_TONE_COLOR_MAP.get(val, TONE_COLORS["safe"])
+        return f'<span class="status-pill" style="color: {cls_color};">{STATE_LABELS[val]} ({_fmt_state_val(val)})</span>'
+
+    idx = LIVE_FEATURES.index(feat)
+    opts = (-1, 0, 1) if feat in TERNARY_LIVE_FEATURES else (-1, 1)
+    btns = "".join(_state_pill_button(idx, opt, val) for opt in opts)
+    return f'<div class="state-toggle-group" title="Click state to test sensitivity">{btns}</div>'
 
 
-def _format_ruler_and_kpis(risk_pct, sec_title, sec_val, base_v, net_m):
-    """Formats the population risk ruler box and four summary KPI tiles."""
-    clamped = min(98.0, max(2.0, risk_pct))
-    marker_color = TONE_COLORS[risk_tone(risk_pct)]
-    ruler = (
-        f'<div class="consensus-card" style="margin-bottom: 12px;"><div class="consensus-header">'
-        f'<span class="consensus-title">Population risk ruler</span>'
-        f'<span class="consensus-pill" style="color: {marker_color};">Threshold 50.0%</span></div>'
-        f'<div class="ruler-wrap"><div class="ruler-tag" style="left: {clamped:.1f}%; color: {marker_color};">{risk_pct:.1f}%</div>'
-        f'<div class="ruler-track"><div class="ruler-zone-safe"></div><div class="ruler-zone-warn"></div><div class="ruler-zone-crit"></div></div>'
-        f'<div class="ruler-threshold"></div><div class="ruler-needle" style="left: {clamped:.1f}%; background-color: {marker_color};"></div></div>'
-        f'<div class="ruler-legend"><span>Legitimate zone</span><span>Suspicious zone</span><span>Critical phishing zone</span></div></div>'
+def _delta_color(shap_v):
+    """Selects signed color for a Shapley delta readout."""
+    if shap_v >= 0:
+        return TONE_COLORS["critical"]
+    return TONE_COLORS["safe"] if shap_v < -0.005 else "#9B9B9B"
+
+
+def _butterfly_bar_html(shap_v, max_abs):
+    """Builds left/right diverging butterfly bar element for a Shapley value."""
+    width_pct = min(48.0, (abs(shap_v) / max_abs) * 48.0)
+    fill_cls = "butterfly-fill-right" if shap_v >= 0 else "butterfly-fill-left"
+    return f'<div class="{fill_cls}" style="width: {width_pct:.1f}%;"></div>'
+
+
+def _format_attribution_row(mode, item, max_abs, row_idx):
+    """Formats one unified diverging butterfly attribution row."""
+    shap_v = item["shap_value"]
+    bar_html = _butterfly_bar_html(shap_v, max_abs)
+    delta_color = _delta_color(shap_v)
+    extra_cls = " attr-extra-row attr-extra-hidden" if (mode == "uci" and row_idx >= 10) else ""
+    return (
+        f'<div class="attr-row{extra_cls}">'
+        f'<div><div class="attr-feat-row"><span class="attr-name">{html.escape(item["feature"])}</span>'
+        f'<span class="attr-domain">{html.escape(item["group"])}</span></div>'
+        f'<div class="attr-copy">{html.escape(item["human_text"])}</div></div>'
+        f'<div>{_format_state_control(mode, item)}</div>'
+        f'<div class="butterfly-wrap"><div class="butterfly-track"><div class="butterfly-zero"></div>{bar_html}</div></div>'
+        f'<div class="attr-delta" style="color: {delta_color};">{_fmt_delta(shap_v, 4)}</div></div>'
     )
-    kpis = (
-        f'<div class="kpi-grid-2">'
-        f'<div class="kpi-tile"><div class="kpi-title">Safe probability</div><div class="kpi-value" style="color: {TONE_COLORS["safe"]};">{100 - risk_pct:.1f}%</div></div>'
-        f'<div class="kpi-tile"><div class="kpi-title">{html.escape(sec_title)}</div><div class="kpi-value">{html.escape(sec_val)}</div></div>'
-        f'<div class="kpi-tile"><div class="kpi-title">Base prior log odds</div><div class="kpi-value">{base_v:+.3f}</div></div>'
-        f'<div class="kpi-tile"><div class="kpi-title">Net log odds margin</div><div class="kpi-value">{net_m:+.3f}</div></div>'
+
+
+def _render_domain_strip(group_breakdown):
+    """Renders four cell hairline security domain net Shapley impact strip."""
+    cells = "".join(
+        f'<div class="h-cell"><div class="cell-label">{html.escape(g["group"])}</div>'
+        f'<div class="cell-value" style="color: {TONE_COLORS["critical"] if g["net_shap"] > 0 else TONE_COLORS["safe"]};">'
+        f'{_fmt_delta(g["net_shap"], 3)}</div></div>'
+        for g in group_breakdown
+    )
+    return f'<div style="margin-top: 16px;"><div class="preset-caption" style="margin-bottom: 8px;">Security domain net log odds impact</div><div class="hairline-grid-4">{cells}</div></div>'
+
+
+def _render_attribution_card(mode, result):
+    """Renders log odds waterfall strip plus unified diverging Shapley attribution list."""
+    drivers = result["all_features"]
+    base_v = result["base_value"]
+    risk_push = sum(d["shap_value"] for d in drivers if d["shap_value"] > 0)
+    safe_pull = sum(d["shap_value"] for d in drivers if d["shap_value"] < 0)
+    net_m = base_v + risk_push + safe_pull
+    max_abs = max([abs(d["shap_value"]) for d in drivers] + [0.1])
+
+    wf_strip = (
+        f'<div class="hairline-grid-4" style="margin-bottom: 16px;">'
+        f'<div class="h-cell"><div class="cell-label">Base expectation</div><div class="cell-value">{_fmt_delta(base_v, 3)}</div></div>'
+        f'<div class="h-cell"><div class="cell-label">Risk drivers push</div><div class="cell-value" style="color: #e57373;">{_fmt_delta(risk_push, 3)}</div></div>'
+        f'<div class="h-cell"><div class="cell-label">Safe signals pull</div><div class="cell-value" style="color: #81c784;">{_fmt_delta(safe_pull, 3)}</div></div>'
+        f'<div class="h-cell"><div class="cell-label">Net log odds margin</div><div class="cell-value">{_fmt_delta(net_m, 3)}</div></div>'
         f'</div>'
     )
-    return f"<div>{ruler}{kpis}</div>"
-
-
-def _render_consensus_ruler_html(result, risk_pct, sec_title, sec_val):
-    """Renders population threshold ruler with KPI tiles beside multi model consensus."""
-    base_v = result["base_value"]
-    net_m = sum(d["shap_value"] for d in result["all_features"]) + base_v
-    c_rows = result["consensus"]
-    sum_text, sum_color = _consensus_header_meta(c_rows)
-    bars_html = "".join(map(_format_consensus_row_html, c_rows))
-    left = _format_ruler_and_kpis(risk_pct, sec_title, sec_val, base_v, net_m)
-    right = (
-        f'<div class="consensus-card" style="height: 100%;"><div class="consensus-header">'
-        f'<span class="consensus-title">Multi model consensus</span>'
-        f'<span class="consensus-pill" style="color: {sum_color};">{sum_text}</span></div>'
-        f'<div class="consensus-sub">Independent evaluator risk scores across trained architectures and structural heuristics.</div>'
-        f'{bars_html}</div>'
+    toggle_html = (
+        '<div class="mode-switch">'
+        '<button id="uci-top-btn" type="button" class="mode-btn active" onclick="toggleUciRows(false)">Top 10 drivers</button>'
+        '<button id="uci-all-btn" type="button" class="mode-btn" onclick="toggleUciRows(true)">All 30 features</button></div>'
+        if mode == "uci"
+        else '<span class="panel-meta">Click state pills (\u22121 / 0 / +1) to test counterfactual impact</span>'
     )
-    return f'<div class="two-col">{left}<div>{right}</div></div>'
-
-
-def _render_ledger_html(base_value, drivers, prob_phishing):
-    """Renders cumulative attribution log odds table alongside the waterfall chart."""
-    top_items = drivers[:6]
-    cum_sum = base_value
-    rows = [
-        f'<tr><td style="color: #9B9B9B;">Base expectation</td>'
-        f'<td style="text-align: right; color: #9B9B9B;">{base_value:+.3f}</td>'
-        f'<td style="text-align: right; color: #FFFFFF;">{cum_sum:+.3f}</td></tr>'
-    ]
-    for d in top_items:
-        s_val = d["shap_value"]
-        cum_sum += s_val
-        cls = "ledger-row-risk" if s_val > 0 else "ledger-row-safe"
-        rows.append(
-            f'<tr><td style="color: #FFFFFF;">{html.escape(d["feature"])}</td>'
-            f'<td style="text-align: right;" class="{cls}">{s_val:+.3f}</td>'
-            f'<td style="text-align: right; color: #FFFFFF;">{cum_sum:+.3f}</td></tr>'
-        )
-    risk_pct = prob_phishing * 100.0
-    tone_color = TONE_COLORS[risk_tone(risk_pct)]
+    rows_html = "".join(
+        _format_attribution_row(mode, item, max_abs, idx)
+        for idx, item in enumerate(drivers)
+    )
+    domain_footer = _render_domain_strip(result["group_breakdown"]) if mode == "uci" else ""
     return (
-        f'<div class="ledger-card"><div style="font-size: 12px; font-weight: 600; color: #9B9B9B; margin-bottom: 12px;">'
-        f'Attribution log odds ledger</div><table class="ledger-table"><thead><tr>'
-        f'<th>Factor</th><th style="text-align: right;">Delta</th><th style="text-align: right;">Cumulative</th></tr></thead>'
-        f'<tbody>{"".join(rows)}<tr class="ledger-row-total"><td>Total net margin</td><td></td>'
-        f'<td style="text-align: right; color: #FFFFFF;">{cum_sum:+.3f}</td></tr>'
-        f'<tr><td style="color: #9B9B9B; padding-top: 8px;">Posterior risk</td><td></td>'
-        f'<td style="text-align: right; font-weight: 600; padding-top: 8px; color: {tone_color};">{risk_pct:.1f}%</td></tr>'
-        f'</tbody></table></div>'
+        f'<div class="panel workbench-fade"><div class="panel-head">'
+        f'<span class="panel-title">TreeSHAP attribution and sensitivity</span>{toggle_html}</div>'
+        f'{wf_strip}<div class="hairline-rows">{rows_html}</div>{domain_footer}</div>'
     )
-
-
-def _render_evidence_html(drivers):
-    """Renders top three evidence cards in plain security terms."""
-    cards = []
-    for d in drivers[:3]:
-        raises = d["shap_value"] > 0
-        pill_color = TONE_COLORS["critical"] if raises else TONE_COLORS["safe"]
-        pill_text = "Raises risk" if raises else "Lowers risk"
-        cards.append(
-            f'<div class="evidence-card"><div class="evidence-head">'
-            f'<span class="evidence-name">{html.escape(d["feature"])}</span>'
-            f'<span class="evidence-pill" style="color: {pill_color};">{pill_text}</span></div>'
-            f'<div class="evidence-value">Shapley {d["shap_value"]:+.3f}</div>'
-            f'<div class="evidence-text">{html.escape(d["human_text"])}</div></div>'
-        )
-    return f'<div class="evidence-grid">{"".join(cards)}</div>'
-
-
-def _render_recourse_html(hints, current_risk_pct):
-    """Renders counterfactual diff cards or clean baseline notice."""
-    if not hints:
-        return (
-            '<div class="action-card"><div style="font-size: 14px; font-weight: 600;">Clean baseline structure</div>'
-            '<div style="font-size: 14px; line-height: 20px; color: #9B9B9B; margin-top: 4px;">'
-            'No single change lowers the score noticeably. The evaluated properties match legitimate norms.</div></div>'
-        )
-    cards = []
-    for h in hints:
-        cur_label = "suspicious" if h["current_value"] == 0 else "phishing"
-        new_pct = round(h["new_phishing_probability"] * 100.0, 1)
-        new_color = TONE_COLORS["safe"] if new_pct < 50 else TONE_COLORS["warning"]
-        cards.append(
-            f'<div class="recourse-card"><div class="recourse-head">'
-            f'<span class="recourse-name">{html.escape(h["feature"])}</span>'
-            f'<span class="recourse-badge">Risk down {h["risk_reduction_pct"]:.1f}%</span></div>'
-            f'<div class="recourse-state">State transition: {cur_label} &#8594; legitimate norm</div>'
-            f'<div class="recourse-delta-row"><span>Phishing risk shift</span>'
-            f'<span style="color: {new_color};">{current_risk_pct:.1f}% &#8594; {new_pct:.1f}%</span></div>'
-            f'<div class="recourse-bars">'
-            f'<div class="recourse-track"><div class="recourse-fill" style="width: {min(100.0, max(0.0, current_risk_pct)):.1f}%; background-color: #e57373;"></div></div>'
-            f'<div class="recourse-track"><div class="recourse-fill" style="width: {min(100.0, max(0.0, new_pct)):.1f}%; background-color: {new_color};"></div></div></div>'
-            f'<div class="recourse-text">{html.escape(h["guidance"])}</div></div>'
-        )
-    return f'<div class="recourse-grid">{"".join(cards)}</div>'
-
-
-def _format_table_cell(val, align):
-    """Formats one console table cell with semantic pills where matching."""
-    text = html.escape(str(val))
-    if text in BADGE_COLORS:
-        content = f'<span class="console-badge" style="color: {BADGE_COLORS[text]};">{text}</span>'
-    else:
-        content = text
-    font_css = "font-family: 'Geist Mono', monospace;" if align == "right" else ""
-    return f'<td style="text-align: {align}; {font_css}">{content}</td>'
-
-
-def _render_console_table(rows, columns):
-    """Renders a graphite console HTML table."""
-    headers = "".join(f'<th style="text-align: {align};">{html.escape(label)}</th>' for _, label, align in columns)
-    body = "".join(
-        f'<tr>{"".join(_format_table_cell(row.get(k, ""), a) for k, _, a in columns)}</tr>'
-        for row in rows
-    )
-    return f'<div class="console-table-wrap"><table class="console-table"><thead><tr>{headers}</tr></thead><tbody>{body}</tbody></table></div>'
-
-
-def _build_waterfall_payload(base_value, drivers):
-    """Serializes top Shapley contributors into Plotly waterfall arrays."""
-    top_items = drivers[:6]
-    return {
-        "x": ["Base prior"] + [d["feature"] for d in top_items] + ["Net log odds"],
-        "measures": ["absolute"] + ["relative"] * len(top_items) + ["total"],
-        "y": [base_value] + [d["shap_value"] for d in top_items] + [0],
-        "texts": [f"{base_value:+.3f}"] + [f"{d['shap_value']:+.3f}" for d in top_items] + [""],
-    }
-
-
-def _render_sec_header(title, note):
-    """Formats a consistent section title and muted subtitle."""
-    return f'<div class="section-title">{html.escape(title)}</div><div class="section-note">{html.escape(note)}</div>'
-
-
-def _compose_results_html(url, result, verdict_title, verdict_sub, sec_kpi, gauge_note, chart_note, table_title, table_sub, rows, cols):
-    """Assembles the shared Tab 1 inspection body across verdict, rail, consensus, charts, and table."""
-    risk_pct = result["phishing_probability"] * 100.0
-    parts = [
-        _render_verdict_html(verdict_title, verdict_sub, risk_pct),
-        _render_token_rail_html(url, result),
-        _render_sec_header("Telemetry and model consensus", gauge_note),
-        _render_consensus_ruler_html(result, risk_pct, sec_kpi[0], sec_kpi[1]),
-        _render_sec_header("TreeSHAP attribution waterfall ledger", chart_note),
-        f'<div class="waterfall-grid"><div class="plot-card"><div id="waterfall-plot"></div></div>'
-        f'<div>{_render_ledger_html(result["base_value"], result["top_drivers"], result["phishing_probability"])}</div></div>',
-        _render_sec_header("Key evidence", "The strongest signals behind this result, in plain language."),
-        _render_evidence_html(result["top_drivers"]),
-        _render_sec_header("Actionable recourse", "Smallest single changes that reduce the phishing score."),
-        _render_recourse_html(result["counterfactual_hints"], risk_pct),
-        _render_sec_header(table_title, table_sub),
-        _render_console_table(rows, cols),
-    ]
-    return "".join(parts)
 
 
 def build_diagnose_payload(mode="uci", url=None, idx=DEFAULT_UCI_IDX, overrides=None):
-    """Produces full inspection HTML and waterfall chart payload for live URL or UCI mode."""
+    """Produces split pane dossier and X-ray attribution HTML for live URL or UCI mode."""
     t0 = time.perf_counter()
     data = load_runtime_data()
     if mode == "live":
         res = diagnose_live(url, overrides)
         ms = max(0.1, (time.perf_counter() - t0) * 1000.0)
         risk_pct = res["phishing_probability"] * 100.0
-        rows = [
-            {
-                "Property": item["feature"],
-                "State": STATE_LABELS[item["value"]],
-                "Shapley impact": f"{item['shap_value']:+.4f}",
-                "Influence": item["pushes_toward"],
-                "Forensic explanation": item["human_text"],
-            }
-            for item in res["all_features"]
-        ]
-        cols = [
-            ("Property", "Property", "left"), ("State", "State", "left"),
-            ("Shapley impact", "Shapley impact", "right"), ("Influence", "Influence", "left"),
-            ("Forensic explanation", "Forensic explanation", "left"),
-        ]
-        body_html = _compose_results_html(
-            res["clean_url"], res, VERDICT_TITLES[risk_tone(risk_pct)],
-            "Evaluated across eight offline lexical properties with zero network exposure.",
-            ("Explanation time", f"{ms:.1f} ms"),
-            "Probability from the lexical XGBoost classifier.",
-            "Contribution of each property to the prediction (TreeSHAP).",
-            "Complete diagnostic matrix", "Every evaluated property with its state and Shapley impact.",
-            rows, cols,
+        dossier = (
+            _render_verdict_dossier_card(
+                VERDICT_TITLES[risk_tone(risk_pct)],
+                "Evaluated across eight offline lexical properties with zero network exposure.",
+                risk_pct, res, "Inference latency", f"{ms:.1f} ms",
+            )
+            + _render_consensus_card(res)
+            + _render_recourse_card(res["counterfactual_hints"], risk_pct)
         )
+        canvas = _render_anatomy_card(res["clean_url"], res) + _render_attribution_card("live", res)
         return {
-            "mode": "live", "clean_url": res["clean_url"], "feature_values": res["feature_values"],
-            "html": body_html, "waterfall": _build_waterfall_payload(res["base_value"], res["top_drivers"]),
+            "mode": "live",
+            "clean_url": res["clean_url"],
+            "has_overrides": res["has_overrides"],
+            "feature_values": res["feature_values"],
+            "risk_pct": round(risk_pct, 1),
+            "html": f'<div class="workbench-grid"><div class="dossier-sticky">{dossier}</div><div class="canvas-col">{canvas}</div></div>',
         }
 
     res = diagnose_uci(idx)
+    risk_pct = res["phishing_probability"] * 100.0
     acc = data["metrics"]["models"]["xgboost_full_30"]["accuracy"] * 100.0
     agree = "The prediction matches." if res["prediction"] == res["true_label"] else "The prediction does not match."
-    rows = [
-        {"group": r["group"], "net_shap": f"{r['net_shap']:+.4f}", "verdict": r["verdict"]}
-        for r in res["group_breakdown"]
-    ]
-    cols = [("group", "Security domain", "left"), ("net_shap", "Net Shapley delta", "right"), ("verdict", "Domain impact", "left")]
-    body_html = _compose_results_html(
-        res["url"], res, f"Model predicts {res['prediction'].lower()}",
-        f"Ground truth is {res['true_label'].lower()}. {agree}",
-        ("Benchmark accuracy", f"{acc:.2f}%"),
-        "Probability from the 30 feature XGBoost model.",
-        "Contribution of each of the 30 attributes (TreeSHAP).",
-        "Security domain impact", "Net Shapley contribution summed per feature domain.",
-        rows, cols,
+    dossier = (
+        _render_verdict_dossier_card(
+            f"Model predicts {res['prediction'].lower()}",
+            f"Ground truth is {res['true_label'].lower()}. {agree}",
+            risk_pct, res, "Benchmark accuracy", f"{acc:.2f}%",
+        )
+        + _render_consensus_card(res)
+        + _render_recourse_card(res["counterfactual_hints"], risk_pct)
     )
+    canvas = _render_anatomy_card(res["url"], res) + _render_attribution_card("uci", res)
     return {
-        "mode": "uci", "idx": res["idx"], "url": res["url"], "true_label": res["true_label"],
-        "html": body_html, "waterfall": _build_waterfall_payload(res["base_value"], res["top_drivers"]),
+        "mode": "uci",
+        "idx": res["idx"],
+        "url": res["url"],
+        "true_label": res["true_label"],
+        "risk_pct": round(risk_pct, 1),
+        "html": f'<div class="workbench-grid"><div class="dossier-sticky">{dossier}</div><div class="canvas-col">{canvas}</div></div>',
     }
 
 
-def _render_sandbox_controls(feature_values):
-    """Builds interactive what if parameter controls for the eight live lexical features."""
-    blocks = []
-    for idx, feat in enumerate(LIVE_FEATURES):
-        cur = int(feature_values.get(feat, 1))
-        opts = (1, 0, -1) if feat in ("URL_Length", "having_Sub_Domain") else (1, -1)
-        option_tags = "".join(
-            f'<option value="{v}" {"selected" if v == cur else ""}>{STATE_LABELS[v]} ({v})</option>'
-            for v in opts
-        )
-        blocks.append(
-            f'<div><label class="field-label" for="sbx-{feat}">{feat}</label>'
-            f'<select id="sbx-{feat}" data-idx="{idx}" class="select-input sbx-select" onchange="onSandboxChange()">'
-            f'{option_tags}</select></div>'
-        )
-    return (
-        f'<details class="sandbox-details"><summary>Interactive feature sandbox (toggle parameters to test what if)</summary>'
-        f'<div class="section-note" style="margin-top: 8px;">Toggle individual extracted properties below to test model sensitivity and inspect exact TreeSHAP deltas.</div>'
-        f'<div class="sandbox-grid">{"".join(blocks)}</div></details>'
-    )
-
-
 def _format_uci_controls(uci_res, is_active):
-    """Formats the UCI benchmark record selector and ground truth banner."""
+    """Formats command omnibox UCI benchmark record stepper and banner."""
     display = "block" if is_active else "none"
     truth_color = "#e57373" if uci_res["true_label"] == "Phishing" else "#81c784"
     return (
-        f'<div id="controls-uci" style="display: {display};"><div class="uci-bar">'
-        f'<div style="display: flex; gap: 8px;"><button type="button" class="btn btn-primary" style="width: 100%;" onclick="pickRandomUci()">Pick random URL</button>'
-        f'<input id="uci-idx-input" type="hidden" value="{uci_res["idx"]}"></div>'
-        f'<div class="chosen-url-inline"><span id="uci-url-text" class="chosen-url-text">{html.escape(uci_res["url"])}</span>'
+        f'<div id="controls-uci" style="display: {display};"><div class="uci-controls-row">'
+        f'<button type="button" class="btn btn-primary" onclick="pickRandomUci()">Pick random record</button>'
+        f'<button type="button" class="btn" onclick="stepUci(-1)" title="Previous record">Prev</button>'
+        f'<span id="uci-record-counter" class="record-counter">#{uci_res["idx"] + 1} of 1,659</span>'
+        f'<button type="button" class="btn" onclick="stepUci(1)" title="Next record">Next</button>'
+        f'<input id="uci-idx-input" type="hidden" value="{uci_res["idx"]}">'
+        f'<div class="uci-url-box"><span id="uci-url-text" class="chosen-url-text">{html.escape(uci_res["url"])}</span>'
         f'<span id="uci-truth-pill" class="status-pill" style="color: {truth_color};">Ground truth: {uci_res["true_label"].lower()}</span>'
         f'</div></div></div>'
     )
 
 
-def _format_live_controls(live_url, is_active, sandbox_vals):
-    """Formats attack preset buttons, URL scan form, and interactive sandbox controls."""
+def _format_live_controls(live_url, is_active, has_overrides):
+    """Formats command omnibox URL scanner input, reset button, and preset pills."""
     display = "block" if is_active else "none"
+    rst_display = "inline-flex" if has_overrides else "none"
     preset_btns = "".join(
-        f'<button type="button" class="btn" onclick="scanPreset({json.dumps(u)})">{html.escape(lbl)}</button>'
+        f'<button type="button" class="preset-pill" onclick="scanPreset({json.dumps(u)})">{html.escape(lbl)}</button>'
         for lbl, u in URL_PRESETS
     )
     return (
         f'<div id="controls-live" style="display: {display};">'
-        f'<div class="preset-label">Attack archetype presets</div>'
-        f'<div class="preset-grid">{preset_btns}</div>'
-        f'<form class="form-row" onsubmit="submitLiveScan(event)">'
+        f'<form class="scan-form" onsubmit="submitLiveScan(event)">'
         f'<input id="live-url-input" type="text" class="text-input" value="{html.escape(live_url)}" placeholder="Enter website address to inspect (e.g. https://...)">'
-        f'<button type="submit" class="btn btn-primary">Scan URL</button></form>'
-        f'<div class="chosen-url-inline"><span id="live-url-display" class="chosen-url-text">{html.escape(sanitize_url(live_url))}</span>'
-        f'<span class="status-pill" style="color: #FFFFFF;">Live lexical input</span></div>'
-        f'{_render_sandbox_controls(sandbox_vals)}</div>'
+        f'<button type="submit" class="btn btn-primary">Scan URL</button>'
+        f'<button id="reset-overrides-btn" type="button" class="btn" style="display: {rst_display};" onclick="resetLiveOverrides()">Reset overrides</button></form>'
+        f'<div class="preset-strip"><span class="preset-caption">Presets</span>{preset_btns}</div></div>'
     )
 
 
-def _render_inspect_tab(mode, live_url, uci_res, live_payload, diag_payload):
-    """Renders Tab 1 mode toggle, preset buttons, sandbox, and result container."""
-    sandbox_vals = live_payload.get("feature_values", {f: 1 for f in LIVE_FEATURES})
-    uci_controls = _format_uci_controls(uci_res, mode == "uci")
-    live_controls = _format_live_controls(live_url, mode == "live", sandbox_vals)
+def _render_inspect_tab(mode, live_url, uci_res, live_res, active_payload):
+    """Renders Tab 1 command omnibox bar above the split pane forensic workbench."""
     uci_cls = "active" if mode == "uci" else ""
     live_cls = "active" if mode == "live" else ""
-    mode_bar = (
+    omnibox = (
+        f'<div class="omnibox"><div class="omnibox-top">'
         f'<div class="mode-switch">'
-        f'<button id="mode-btn-uci" type="button" class="mode-btn {uci_cls}" onclick="setInspectMode(\'uci\')">UCI benchmark record</button>'
-        f'<button id="mode-btn-live" type="button" class="mode-btn {live_cls}" onclick="setInspectMode(\'live\')">Live URL input</button>'
-        f'</div>'
+        f'<button id="mode-btn-uci" type="button" class="mode-btn {uci_cls}" onclick="setInspectMode(\'uci\')">UCI benchmark</button>'
+        f'<button id="mode-btn-live" type="button" class="mode-btn {live_cls}" onclick="setInspectMode(\'live\')">Live URL scanner</button></div>'
+        f'<div class="omnibox-controls">'
+        f'{_format_uci_controls(uci_res, mode == "uci")}'
+        f'{_format_live_controls(live_url, mode == "live", live_res["has_overrides"])}'
+        f'</div></div></div>'
     )
-    return f'{mode_bar}{uci_controls}{live_controls}<div id="inspect-results">{diag_payload["html"]}</div>'
+    return f'{omnibox}<div id="inspect-results">{active_payload["html"]}</div>'
 
 
-def _render_eval_tab(data):
-    """Renders Tab 2 model evaluation KPIs, table, interactive threshold simulator, and plots."""
-    scores = data["metrics"]["models"]
-    top_kpis = (
-        f'<div class="kpi-grid-4">'
-        f'<div class="kpi-tile"><div class="kpi-title">XGBoost 30 accuracy</div><div class="kpi-value">{scores["xgboost_full_30"]["accuracy"]*100:.2f}%</div></div>'
-        f'<div class="kpi-tile"><div class="kpi-title">XGBoost 30 recall</div><div class="kpi-value">{scores["xgboost_full_30"]["recall"]*100:.2f}%</div></div>'
-        f'<div class="kpi-tile"><div class="kpi-title">XGBoost 30 ROC AUC</div><div class="kpi-value">{scores["xgboost_full_30"]["roc_auc"]:.4f}</div></div>'
-        f'<div class="kpi-tile"><div class="kpi-title">Live 8 lexical accuracy</div><div class="kpi-value">{scores["xgboost_live_lexical_8"]["accuracy"]*100:.2f}%</div></div>'
-        f'</div>'
+def _svg_polyline(fpr_list, tpr_list):
+    """Converts FPR/TPR lists into SVG polyline coordinate string."""
+    return " ".join(f"{56 + fx * 440:.1f},{256 - ty * 236:.1f}" for fx, ty in zip(fpr_list, tpr_list))
+
+
+def _render_roc_svg(scores):
+    """Builds standalone vector SVG ROC curve without external plotting libraries."""
+    grid_lines = "".join(
+        f'<line x1="56" y1="{256 - v * 236:.1f}" x2="496" y2="{256 - v * 236:.1f}" stroke="#272727" stroke-width="1"/>'
+        f'<line x1="{56 + v * 440:.1f}" y1="20" x2="{56 + v * 440:.1f}" y2="256" stroke="#272727" stroke-width="1"/>'
+        f'<text x="48" y="{260 - v * 236:.1f}" fill="#9B9B9B" font-family="Geist Mono" font-size="11" text-anchor="end">{v:.2f}</text>'
+        f'<text x="{56 + v * 440:.1f}" y="274" fill="#9B9B9B" font-family="Geist Mono" font-size="11" text-anchor="middle">{v:.2f}</text>'
+        for v in (0.0, 0.25, 0.50, 0.75, 1.0)
     )
-    model_specs = (
+    p_xgb30 = _svg_polyline(scores["xgboost_full_30"]["curve_samples"]["fpr"], scores["xgboost_full_30"]["curve_samples"]["tpr"])
+    p_rf30 = _svg_polyline(scores["random_forest_full_30"]["curve_samples"]["fpr"], scores["random_forest_full_30"]["curve_samples"]["tpr"])
+    p_xgb8 = _svg_polyline(scores["xgboost_live_lexical_8"]["curve_samples"]["fpr"], scores["xgboost_live_lexical_8"]["curve_samples"]["tpr"])
+    return (
+        f'<svg class="svg-box" viewBox="0 0 520 296" xmlns="http://www.w3.org/2000/svg">'
+        f'<rect x="56" y="20" width="440" height="236" fill="#000000" stroke="#272727"/>'
+        f'{grid_lines}'
+        f'<line x1="56" y1="256" x2="496" y2="20" stroke="#313131" stroke-dasharray="4 4" stroke-width="1"/>'
+        f'<polyline fill="none" stroke="#616161" stroke-width="1.5" stroke-dasharray="4 4" points="{p_xgb8}"/>'
+        f'<polyline fill="none" stroke="#9B9B9B" stroke-width="1.5" points="{p_rf30}"/>'
+        f'<polyline fill="none" stroke="#FFFFFF" stroke-width="2" points="{p_xgb30}"/>'
+        f'<line id="roc-guide-x" x1="72" y1="30" x2="72" y2="256" stroke="#616161" stroke-dasharray="3 3" stroke-width="1"/>'
+        f'<line id="roc-guide-y" x1="56" y1="30" x2="72" y2="30" stroke="#616161" stroke-dasharray="3 3" stroke-width="1"/>'
+        f'<circle id="roc-active-dot" cx="72" cy="30" r="5" fill="#e57373" stroke="#FFFFFF" stroke-width="1.5"/>'
+        f'<text x="276" y="292" fill="#9B9B9B" font-family="Geist" font-size="11" text-anchor="middle">False positive rate</text>'
+        f'</svg>'
+    )
+
+
+def _render_cm_matrix():
+    """Renders 2x2 HTML/CSS hairline Confusion Matrix quadrants updated live in JS."""
+    cells = (
+        ("tn", "True negative", "Actual legitimate / Predicted legitimate", "#81c784"),
+        ("fp", "False positive", "Actual legitimate / Predicted phishing", "#e57373"),
+        ("fn", "False negative", "Actual phishing / Predicted legitimate", "#e57373"),
+        ("tp", "True positive", "Actual phishing / Predicted phishing", "#81c784"),
+    )
+    items = "".join(
+        f'<div class="cm-cell"><div><div class="cell-label" style="color: {color};">{lbl}</div>'
+        f'<div style="font-size: 12px; color: #9B9B9B; margin-top: 2px;">{sub}</div></div>'
+        f'<div id="cm-{key}-cnt" class="cm-count">0</div>'
+        f'<div><div id="cm-{key}-pct" class="panel-meta">0.0% of test set</div>'
+        f'<div class="bar-track" style="margin-top: 4px;"><div id="cm-{key}-bar" class="bar-fill" style="width: 0%; background-color: {color};"></div></div></div></div>'
+        for key, lbl, sub, color in cells
+    )
+    return f'<div class="cm-grid">{items}</div>'
+
+
+def _render_global_shap_panel(global_shap):
+    """Renders native CSS twelve row Global TreeSHAP importance bar list."""
+    top_val = max([d["mean_shap"] for d in global_shap] + [0.1])
+    rows = "".join(
+        f'<div class="global-row"><span class="attr-name" style="font-size: 12px;">{html.escape(d["feature"])}</span>'
+        f'<div class="bar-track" style="height: 8px;"><div class="bar-fill" style="width: {(d["mean_shap"] / top_val) * 100:.1f}%; '
+        f'background-color: {"#FFFFFF" if d["is_live"] else "#616161"};"></div></div>'
+        f'<span class="attr-delta" style="color: #FFFFFF;">{d["mean_shap"]:.3f}</span></div>'
+        for d in global_shap
+    )
+    return (
+        f'<div class="panel"><div class="panel-head"><span class="panel-title">Global TreeSHAP feature importance</span>'
+        f'<span class="panel-meta">White: live lexical / Grey: offline</span></div>'
+        f'<div class="hairline-rows">{rows}</div></div>'
+    )
+
+
+def _render_eval_table(scores):
+    """Renders four model comparative hairline grid table."""
+    specs = (
         ("XGBoost", "30 (Full)", "xgboost_full_30"),
         ("Random Forest", "30 (Full)", "random_forest_full_30"),
         ("Logistic Regression", "30 (Full)", "logistic_regression_full_30"),
         ("XGBoost live subset", "8 (URL only)", "xgboost_live_lexical_8"),
     )
-    perf_rows = [
-        {
-            "Model architecture": name, "Features": feat_txt,
-            "Accuracy": f"{scores[key]['accuracy']*100:.2f}%", "Precision": f"{scores[key]['precision']*100:.2f}%",
-            "Recall": f"{scores[key]['recall']*100:.2f}%", "F1 score": f"{scores[key]['f1']:.4f}",
-            "ROC AUC": f"{scores[key]['roc_auc']:.4f}", "MCC": f"{scores[key]['mcc']:.4f}",
-        }
-        for name, feat_txt, key in model_specs
-    ]
-    perf_cols = [
-        ("Model architecture", "Model architecture", "left"), ("Features", "Features", "left"),
-        ("Accuracy", "Accuracy", "right"), ("Precision", "Precision", "right"),
-        ("Recall", "Recall", "right"), ("F1 score", "F1 score", "right"),
-        ("ROC AUC", "ROC AUC", "right"), ("MCC", "MCC", "right"),
-    ]
-    slider_box = (
-        '<div class="slider-card"><div class="slider-head">'
-        '<span class="consensus-title">Classification probability threshold</span>'
-        '<span id="thresh-readout" class="consensus-pill" style="color: #FFFFFF;">0.50</span></div>'
-        '<input id="threshold-slider" class="range-input" type="range" min="0.05" max="0.95" step="0.05" value="0.50" oninput="drawEvalCharts()">'
-        '</div>'
-    )
-    thresh_kpis = (
-        '<div class="kpi-grid-4">'
-        '<div class="kpi-tile"><div id="kpi-prec-lbl" class="kpi-title">Precision at 0.50</div><div id="kpi-prec-val" class="kpi-value">0.00%</div></div>'
-        '<div class="kpi-tile"><div id="kpi-rec-lbl" class="kpi-title">Recall at 0.50</div><div id="kpi-rec-val" class="kpi-value">0.00%</div></div>'
-        '<div class="kpi-tile"><div id="kpi-f1-lbl" class="kpi-title">F1 score at 0.50</div><div id="kpi-f1-val" class="kpi-value">0.0000</div></div>'
-        '<div class="kpi-tile"><div class="kpi-title">False positives / Missed</div><div id="kpi-fpfn-val" class="kpi-value">0 / 0</div></div>'
-        '</div>'
-    )
-    plots = (
-        '<div class="two-col">'
-        '<div class="plot-card"><div class="preset-label" style="margin: 4px 0 8px 8px;">Receiver operating characteristic</div><div id="roc-plot"></div></div>'
-        '<div class="plot-card"><div id="cm-title" class="preset-label" style="margin: 4px 0 8px 8px;">Confusion matrix at threshold 0.50</div><div id="cm-plot"></div></div>'
-        '</div>'
-        + _render_sec_header("Global TreeSHAP feature importance", "Mean absolute Shapley magnitude across test records. White bars mark live lexical features and grey bars mark offline attributes.")
-        + '<div class="plot-card"><div id="global-shap-plot"></div></div>'
+    hdrs = ("Model architecture", "Features", "Accuracy", "Precision", "Recall", "F1 score", "ROC AUC", "MCC")
+    head_row = "".join(f'<div class="table-cell-head" style="text-align: {"right" if i >= 2 else "left"};">{h}</div>' for i, h in enumerate(hdrs))
+    body_rows = "".join(
+        f'<div class="table-cell">{name}</div><div class="table-cell mono" style="color: #9B9B9B;">{feat_lbl}</div>'
+        f'<div class="table-cell mono" style="text-align: right;">{scores[k]["accuracy"]*100:.2f}%</div>'
+        f'<div class="table-cell mono" style="text-align: right;">{scores[k]["precision"]*100:.2f}%</div>'
+        f'<div class="table-cell mono" style="text-align: right;">{scores[k]["recall"]*100:.2f}%</div>'
+        f'<div class="table-cell mono" style="text-align: right;">{scores[k]["f1"]:.4f}</div>'
+        f'<div class="table-cell mono" style="text-align: right;">{scores[k]["roc_auc"]:.4f}</div>'
+        f'<div class="table-cell mono" style="text-align: right;">{scores[k]["mcc"]:.4f}</div>'
+        for name, feat_lbl, k in specs
     )
     return (
-        _render_sec_header("Model evaluation and ablation", "Benchmark scores measured on the held out test partition (1,659 records).")
-        + top_kpis
-        + _render_console_table(perf_rows, perf_cols)
-        + _render_sec_header("Interactive decision threshold simulator", "Adjust the probability threshold to balance false alarms against missed phishing attacks.")
-        + slider_box + thresh_kpis + plots
+        '<div class="panel" style="margin-bottom: 16px;"><div class="panel-head">'
+        '<span class="panel-title">Comparative model evaluation</span>'
+        '<span class="panel-meta">Held out partition (1,659 records)</span></div>'
+        f'<div class="hairline-rows table-row-8" style="overflow-x: auto;">{head_row}{body_rows}</div></div>'
+    )
+
+
+def _render_eval_tab(data):
+    """Renders Tab 2 benchmark KPI strip, SVG threshold explorer, confusion matrix, and global SHAP."""
+    scores = data["metrics"]["models"]
+    top_kpis = (
+        f'<div class="hairline-grid-4" style="margin-bottom: 16px;">'
+        f'<div class="h-cell-surface"><div class="cell-label">XGBoost 30 accuracy</div><div class="cell-value">{scores["xgboost_full_30"]["accuracy"]*100:.2f}%</div></div>'
+        f'<div class="h-cell-surface"><div class="cell-label">XGBoost 30 recall</div><div class="cell-value">{scores["xgboost_full_30"]["recall"]*100:.2f}%</div></div>'
+        f'<div class="h-cell-surface"><div class="cell-label">XGBoost 30 ROC AUC</div><div class="cell-value">{scores["xgboost_full_30"]["roc_auc"]:.4f}</div></div>'
+        f'<div class="h-cell-surface"><div class="cell-label">Live 8 lexical accuracy</div><div class="cell-value">{scores["xgboost_live_lexical_8"]["accuracy"]*100:.2f}%</div></div>'
+        f'</div>'
+    )
+    thresh_card = (
+        '<div class="panel" style="margin-bottom: 16px;"><div class="panel-head">'
+        '<span class="panel-title">Interactive decision threshold simulator</span>'
+        '<span id="thresh-readout" class="status-pill" style="color: #FFFFFF;">0.50</span></div>'
+        '<div class="slider-row"><input id="threshold-slider" class="range-input" type="range" min="0.05" max="0.95" step="0.05" value="0.50" oninput="drawEvalCharts()"></div>'
+        '<div class="hairline-grid-4">'
+        '<div class="h-cell"><div id="kpi-prec-lbl" class="cell-label">Precision at 0.50</div><div id="kpi-prec-val" class="cell-value">0.00%</div></div>'
+        '<div class="h-cell"><div id="kpi-rec-lbl" class="cell-label">Recall at 0.50</div><div id="kpi-rec-val" class="cell-value">0.00%</div></div>'
+        '<div class="h-cell"><div id="kpi-f1-lbl" class="cell-label">F1 score at 0.50</div><div id="kpi-f1-val" class="cell-value">0.0000</div></div>'
+        '<div class="h-cell"><div class="cell-label">False positives / Missed</div><div id="kpi-fpfn-val" class="cell-value">0 / 0</div></div>'
+        '</div></div>'
+    )
+    svg_panel = (
+        f'<div class="panel"><div class="panel-head"><span class="panel-title">Receiver operating characteristic</span>'
+        f'<span id="roc-coords-label" class="panel-meta">FPR 0.00%  TPR 0.00%</span></div>{_render_roc_svg(scores)}'
+        f'<div class="preset-strip"><span class="panel-meta" style="color: #FFFFFF;">White: XGBoost 30</span>'
+        f'<span class="panel-meta">Grey: Random Forest</span><span class="panel-meta">Dashed: XGBoost 8</span></div></div>'
+    )
+    cm_panel = f'<div class="panel"><div class="panel-head"><span class="panel-title">Confusion matrix</span><span class="panel-meta">Live threshold counts</span></div>{_render_cm_matrix()}</div>'
+    return (
+        top_kpis + _render_eval_table(scores) + thresh_card
+        + f'<div class="eval-split">{svg_panel}{cm_panel}</div>'
+        + _render_global_shap_panel(data["bundle"]["test_eval"]["global_shap"])
     )
 
 
 def _format_catalog_card(name, meta, prevalence):
-    """Formats one bento card inside Tab 3 Feature catalog."""
+    """Formats one feature catalog bento card."""
     is_live = meta.get("extractable_live", False)
     mode_tag = "Live lexical only" if is_live else "Offline network and DOM"
     badge_text = "Live lexical" if is_live else ("Legacy API" if meta.get("deprecated", False) else "Offline record")
     badge_color = "#81c784" if is_live else "#9B9B9B"
     p_phish, p_susp, p_legit = prevalence
-    rule_clean = meta.get("rule", "").replace("->", "&#8594;")
+    group_clean = _clean_copy(meta.get("group", ""))
+    desc_clean = _clean_copy(meta.get("description", ""))
+    rule_clean = _clean_copy(meta.get("rule", ""))
+    search_blob = f"{name} {group_clean} {desc_clean} {rule_clean}".lower()
     return (
-        f'<div class="catalog-card" data-domain="{html.escape(meta.get("group", ""))}" data-mode="{mode_tag}">'
+        f'<div class="catalog-card" data-domain="{html.escape(group_clean)}" data-mode="{mode_tag}" data-search="{html.escape(search_blob)}">'
         f'<div><div class="catalog-head"><span class="catalog-name">{html.escape(name)}</span>'
-        f'<span class="catalog-badge" style="color: {badge_color};">{badge_text}</span></div>'
-        f'<div class="catalog-domain">{html.escape(meta.get("group", ""))}</div></div>'
-        f'<div class="catalog-desc">{html.escape(meta.get("description", ""))}</div>'
-        f'<div class="catalog-rule">{rule_clean}</div>'
+        f'<span class="status-pill" style="color: {badge_color};">{badge_text}</span></div>'
+        f'<div class="cell-label" style="margin-top: 4px;">{html.escape(group_clean)}</div></div>'
+        f'<div style="font-size: 14px; line-height: 20px;">{html.escape(desc_clean)}</div>'
+        f'<div class="catalog-rule">{html.escape(rule_clean)}</div>'
         f'<div><div class="prev-head"><span>Test partition prevalence</span>'
         f'<span>{p_phish:.0f}% / {p_susp:.0f}% / {p_legit:.0f}%</span></div>'
         f'<div class="prev-track"><div style="width: {p_phish:.1f}%; background-color: #e57373;"></div>'
@@ -1515,46 +1726,38 @@ def _format_catalog_card(name, meta, prevalence):
 
 
 def _render_catalog_tab(data):
-    """Renders Tab 3 security domain filters and three column feature bento grid."""
+    """Renders Tab 3 live text search, domain filter, extraction filter, and bento grid."""
     catalog = data["catalog"]
     prev_map = data["bundle"]["prevalence"]
     domain_opts = "".join(
-        f'<option value="{html.escape(g)}">{html.escape(g)}</option>'
+        f'<option value="{html.escape(_clean_copy(g))}">{html.escape(_clean_copy(g))}</option>'
         for g in ["All domains"] + list(catalog["feature_groups"].keys())
     )
     mode_opts = "".join(
-        f'<option value="{html.escape(m)}">{html.escape(m)}</option>'
+        f'<option value="{m}">{m}</option>'
         for m in ("All features", "Live lexical only", "Offline network and DOM")
     )
-    filters = (
-        f'<div class="two-col">'
-        f'<div><label class="field-label" for="cat-domain-select">Select security domain</label>'
-        f'<select id="cat-domain-select" class="select-input" onchange="filterCatalog()">{domain_opts}</select></div>'
-        f'<div><label class="field-label" for="cat-mode-select">Select extraction mode</label>'
+    toolbar = (
+        '<div class="panel" style="margin-bottom: 16px;"><div class="panel-head">'
+        '<span class="panel-title">Feature taxonomy of thirty phishing signals</span>'
+        f'<span id="cat-match-count" class="status-pill" style="color: #FFFFFF;">{len(catalog["features"])} of {len(catalog["features"])} features</span></div>'
+        '<div class="catalog-filters">'
+        '<input id="cat-search-input" type="text" class="text-input" placeholder="Search feature name, domain, or rule" oninput="filterCatalog()">'
+        f'<select id="cat-domain-select" class="select-input" onchange="filterCatalog()">{domain_opts}</select>'
         f'<select id="cat-mode-select" class="select-input" onchange="filterCatalog()">{mode_opts}</select></div></div>'
     )
     cards = "".join(
         _format_catalog_card(name, meta, prev_map.get(name, [0.0, 0.0, 100.0]))
         for name, meta in catalog["features"].items()
     )
-    return (
-        _render_sec_header("Feature catalog", "Complete taxonomy of thirty features defined by Mohammad et al., annotated with empirical partition prevalence.")
-        + filters + f'<div class="catalog-grid">{cards}</div>'
-    )
+    return f'{toolbar}<div class="catalog-grid">{cards}</div>'
 
 
 def _build_eval_bootstrap(data):
-    """Builds JSON bootstrap arrays for client side ROC curves, threshold simulator, and global SHAP."""
-    scores = data["metrics"]["models"]
+    """Builds JSON bootstrap arrays for client side threshold and confusion matrix updates."""
     return {
         "y_true": data["bundle"]["test_eval"]["y_true"],
         "y_probs": data["bundle"]["test_eval"]["y_probs"],
-        "global_shap": data["bundle"]["test_eval"]["global_shap"],
-        "roc": {
-            "xgb30": scores["xgboost_full_30"]["curve_samples"],
-            "rf30": scores["random_forest_full_30"]["curve_samples"],
-            "xgb8": scores["xgboost_live_lexical_8"]["curve_samples"],
-        },
     }
 
 
@@ -1563,33 +1766,36 @@ def _active_cls(current, target):
     return "active" if current == target else ""
 
 
-def _render_tab_bar(active_tab):
-    """Renders the segmented navigation control across all three views."""
-    tab_defs = (
-        ("inspect", "URL inspection"),
-        ("eval", "Model evaluation and ablation"),
-        ("catalog", "Feature catalog"),
-    )
-    return "".join(
+def _render_topbar(active_tab):
+    """Renders persistent Vercel monochrome navigation header and segmented tabs."""
+    tab_defs = (("inspect", "URL inspection"), ("eval", "Model evaluation"), ("catalog", "Feature catalog"))
+    tab_btns = "".join(
         f'<button type="button" data-tab="{tid}" class="tab-btn {_active_cls(active_tab, tid)}" '
         f'onclick="switchTab(\'{tid}\')">{lbl}</button>'
         for tid, lbl in tab_defs
     )
+    triangle_svg = (
+        '<svg width="16" height="14" viewBox="0 0 16 14" fill="none" aria-hidden="true">'
+        '<path d="M8 0L16 14H0L8 0Z" fill="#FFFFFF"/></svg>'
+    )
+    return (
+        f'<header class="topbar"><div class="brand-group">{triangle_svg}'
+        f'<span class="brand-name">PhishLens</span><span class="brand-sep">/</span>'
+        f'<span class="brand-sub">Threat intelligence</span></div>'
+        f'<nav class="tab-bar">{tab_btns}</nav>'
+        f'<div class="status-chip"><span class="status-dot"></span><span>TreeSHAP ready</span></div></header>'
+    )
 
 
 def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspect", overrides=None):
-    """Renders the complete standalone PhishLens Telemetry Console HTML document."""
+    """Renders the complete standalone Vercel black and white PhishLens HTML document."""
     data = load_runtime_data()
     live_url = url or DEFAULT_LIVE_URL
     uci_payload = build_diagnose_payload("uci", idx=idx)
     live_payload = build_diagnose_payload("live", url=live_url, overrides=overrides)
     active_diag = live_payload if mode == "live" else uci_payload
     inspect_html = _render_inspect_tab(mode, live_url, uci_payload, live_payload, active_diag)
-    boot_script = (
-        f'window.__evalData = {json.dumps(_build_eval_bootstrap(data))};'
-        f'drawWaterfall({json.dumps(active_diag["waterfall"])});'
-        f'drawEvalCharts();'
-    )
+    boot_script = f'window.__evalData = {json.dumps(_build_eval_bootstrap(data))}; drawEvalCharts();'
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
@@ -1597,10 +1803,10 @@ def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspec
         '<link rel="preconnect" href="https://fonts.googleapis.com">'
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap">'
-        '<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>'
         f'<style>{PAGE_CSS}</style></head><body><div class="container">'
-        '<div class="hero-box"><div class="hero-heading">Evaluate website security<br>with transparent reasoning.</div></div>'
-        f'<div class="tab-bar">{_render_tab_bar(tab)}</div>'
+        f'{_render_topbar(tab)}'
+        '<div class="hero-band"><div class="hero-box"><div class="hero-heading">Evaluate website security with transparent reasoning</div>'
+        '<div class="hero-sub">Exact game theoretic feature attributions, population calibration, and actionable counterfactual recourse.</div></div></div>'
         f'<div id="panel-inspect" class="tab-panel {_active_cls(tab, "inspect")}">{inspect_html}</div>'
         f'<div id="panel-eval" class="tab-panel {_active_cls(tab, "eval")}">{_render_eval_tab(data)}</div>'
         f'<div id="panel-catalog" class="tab-panel {_active_cls(tab, "catalog")}">{_render_catalog_tab(data)}</div>'
