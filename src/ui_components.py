@@ -8,17 +8,18 @@ import urllib.parse
 import plotly.graph_objects as go
 import streamlit as st
 
-TONE_COLORS = {"critical": "#e57373", "warning": "#ffb74d", "safe": "#81c784"}
+TONE_COLORS = {"critical": "#FF162A", "warning": "#F59E0B", "safe": "#05DF72"}
 EVIDENCE_LIMIT = 3
 
 RESULT_CSS = """
     /* Verdict Card */
     .verdict-card {
-        background-color: #181818;
-        border: 1px solid #272727;
-        border-radius: 12px;
+        background-color: #0E0C12;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
         padding: 24px;
         margin-bottom: 24px;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
     }
     .verdict-top {
         display: flex;

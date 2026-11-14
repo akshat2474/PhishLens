@@ -586,14 +586,24 @@ catalog, model_metrics, test_dataset = get_catalog_and_metrics()
 st.markdown("""
 <div class="vercel-topbar">
     <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <span class="vercel-brand"><span class="vercel-tri">&#9650;</span> PhishLens</span>
-        <span class="vercel-sub">Threat intelligence</span>
+        <span class="vercel-brand">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;">
+                <path d="M12 2L2 12L12 22L22 12L12 2Z" fill="#FF162A"/>
+                <path d="M12 6L6 12L12 18L18 12L12 6Z" fill="#06050A"/>
+                <path d="M12 9L9 12L12 15L15 12L12 9Z" fill="#FF7A98"/>
+            </svg>
+            PhishLens
+        </span>
+        <span class="vercel-sub">Security intelligence</span>
     </div>
     <span class="vercel-chip">XGBoost &#8226; Random Forest &#8226; Logistic Regression</span>
 </div>
 <div class="hero-box">
     <div class="hero-heading">
-        Evaluate website security<br>with transparent reasoning.
+        Your shortcut to malicious link detection.
+    </div>
+    <div style="font-size: 16px; line-height: 24px; color: #E2E8F0; text-wrap: balance; margin-top: 8px;">
+        A collection of explainable machine learning models in one security workbench. Fast, ergonomic and verifiable.
     </div>
 </div>
 """, unsafe_allow_html=True)
