@@ -4,7 +4,7 @@ Vercel Python (Flask WSGI) entrypoint for the PhishLens Telemetry Console.
 
 from flask import Flask, Response, jsonify, request
 
-from src.vercel_console import (
+from src.console_ui import (
     DEFAULT_UCI_IDX,
     build_diagnose_payload,
     render_full_page_html,
