@@ -1,0 +1,11 @@
+[project]
+name = "phishlens"
+version = "1.0.0"
+description = "Explainable phishing detection telemetry console"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.0.0",
+]
+
+[tool.vercel]
+entrypoint = "wsgi:app"
