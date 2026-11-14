@@ -19,7 +19,7 @@ METRICS_PATH = os.path.join("artifacts", "model_metrics.json")
 
 DEFAULT_LIVE_URL = "https://secure-auth-verification.example.org/portal"
 DEFAULT_UCI_IDX = 835
-TONE_COLORS = {"critical": "#e57373", "warning": "#ffb74d", "safe": "#81c784"}
+TONE_COLORS = {"critical": "#F43F5E", "warning": "#F59E0B", "safe": "#10B981"}
 STATE_LABELS = {1: "Legitimate", 0: "Suspicious", -1: "Phishing"}
 VERDICT_TITLES = {
     "critical": "Phishing attack detected",
@@ -34,11 +34,11 @@ URL_PRESETS = (
     ("Clean baseline", "https://www.github.com/explore"),
 )
 BADGE_COLORS = {
-    "Phishing": "#e57373",
-    "Elevates Risk": "#e57373",
-    "Suspicious": "#ffb74d",
-    "Legitimate": "#81c784",
-    "Supports Legitimacy": "#81c784",
+    "Phishing": "#F43F5E",
+    "Elevates Risk": "#F43F5E",
+    "Suspicious": "#F59E0B",
+    "Legitimate": "#10B981",
+    "Supports Legitimacy": "#10B981",
 }
 COPY_REPLACEMENTS = (
     ("->", "\u2192"),
@@ -66,7 +66,7 @@ PAGE_CSS = """
     html, body {
         margin: 0;
         padding: 0;
-        background-color: #06050A;
+        background-color: #000000;
         color: #FFFFFF;
         font-family: 'Geist', sans-serif;
         -webkit-font-smoothing: antialiased;
@@ -83,33 +83,38 @@ PAGE_CSS = """
     p, span, div { text-wrap: pretty; }
 
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(8px); }
+        from { opacity: 0; transform: translateY(6px); }
         to { opacity: 1; transform: translateY(0); }
     }
+    @keyframes ringDraw {
+        from { stroke-dashoffset: 175.93; }
+    }
     .workbench-fade {
-        animation: fadeInUp 280ms cubic-bezier(0.16, 1, 0.3, 1);
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
-    /* Raycast Floating Pill Navbar */
-    .raycast-navbar {
-        position: sticky;
-        top: 16px;
-        margin: 16px auto 0 auto;
-        max-width: 1280px;
-        width: calc(100% - 32px);
-        z-index: 50;
+    /* Container */
+    .container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 24px 24px 64px 24px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Classy Architectural Top Bar */
+    .topbar {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
         flex-wrap: wrap;
-        padding: 8px 16px;
-        background: rgba(12, 10, 16, 0.78);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 9999px;
-        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+        animation: fadeInUp 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
     .brand-group {
         display: flex;
@@ -123,45 +128,47 @@ PAGE_CSS = """
         color: #FFFFFF;
         letter-spacing: -0.01em;
     }
-    .brand-chip {
+    .brand-sep {
+        color: #313131;
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+        line-height: 20px;
+    }
+    .brand-sub {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 9999px;
-        padding: 2px 8px;
+        color: #9B9B9B;
     }
     .tab-bar {
         display: flex;
         align-items: center;
         gap: 4px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 9999px;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
         padding: 2px;
     }
     .tab-btn {
-        background: transparent;
-        color: #94A3B8;
+        background-color: transparent;
+        color: #9B9B9B;
         border: 1px solid transparent;
-        border-radius: 9999px;
+        border-radius: 6px;
         font-family: 'Geist', sans-serif;
         font-size: 12px;
         line-height: 16px;
         font-weight: 500;
-        padding: 6px 12px;
+        padding: 8px 12px;
         cursor: pointer;
         transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
     }
     .tab-btn:hover {
         color: #FFFFFF;
-        background: rgba(255, 255, 255, 0.06);
+        background-color: #181818;
     }
     .tab-btn.active {
         color: #FFFFFF;
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.16);
+        background-color: #181818;
+        border-color: #313131;
     }
     .status-chip {
         display: inline-flex;
@@ -170,9 +177,9 @@ PAGE_CSS = """
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
-        color: #E2E8F0;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #9B9B9B;
+        background-color: #000000;
+        border: 1px solid #272727;
         border-radius: 9999px;
         padding: 4px 12px;
     }
@@ -180,74 +187,40 @@ PAGE_CSS = """
         width: 8px;
         height: 8px;
         border-radius: 9999px;
-        background-color: #05DF72;
-        box-shadow: 0 0 10px #05DF72;
+        background-color: #10B981;
     }
 
-    /* Raycast Hero Stage with Animated Cylinder Canvas */
-    .hero-stage {
-        position: relative;
-        overflow: hidden;
-        width: 100%;
-        min-height: 520px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
+    /* Compact Editorial Intro */
+    .hero-band {
+        margin-bottom: 24px;
+        animation: fadeInUp 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
-    #raycast-hero-canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        pointer-events: none;
-    }
-    .hero-content {
-        position: relative;
-        z-index: 2;
-        padding: 64px 24px 48px 24px;
-        max-width: 860px;
-        margin: 0 auto;
-    }
-    .hero-title {
-        font-size: 48px;
-        line-height: 1;
-        font-weight: 700;
-        color: #FFFFFF;
-        letter-spacing: -0.03em;
-        text-wrap: balance;
-        margin-bottom: 16px;
-    }
-    .hero-subtitle {
-        font-size: 18px;
-        line-height: 28px;
-        color: #E2E8F0;
-        text-wrap: balance;
+    .hero-heading {
+        font-size: 30px;
+        line-height: 36px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        background: linear-gradient(90deg, #FFFFFF 0%, #9B9B9B 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         max-width: 680px;
-        margin: 0 auto 32px auto;
+        margin-bottom: 8px;
+    }
+    .hero-sub {
+        font-size: 14px;
+        line-height: 20px;
+        color: #9B9B9B;
+        max-width: 680px;
     }
 
-    /* Layout Container */
-    .container {
-        max-width: 1440px;
-        margin: 0 auto;
-        padding: 32px 24px 64px 24px;
-    }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-
-    /* Raycast Floating Command Omnibox */
+    /* Elevated Command Omnibox */
     .omnibox {
-        background: rgba(14, 12, 18, 0.88);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.16);
+        background-color: #181818;
+        border: 1px solid #272727;
         border-radius: 16px;
         padding: 16px;
-        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 22, 42, 0.14);
         margin-bottom: 24px;
+        animation: fadeInUp 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
     .omnibox-top {
         display: flex;
@@ -256,86 +229,92 @@ PAGE_CSS = """
     }
     .mode-switch {
         display: inline-flex;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 9999px;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
         padding: 2px;
         align-self: flex-start;
     }
     .mode-btn {
-        background: transparent;
-        color: #94A3B8;
+        background-color: transparent;
+        color: #9B9B9B;
         border: 1px solid transparent;
-        border-radius: 9999px;
+        border-radius: 6px;
         font-family: 'Geist', sans-serif;
         font-size: 12px;
         line-height: 16px;
         font-weight: 500;
-        padding: 6px 16px;
+        padding: 6px 12px;
         cursor: pointer;
         transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
     }
     .mode-btn:hover { color: #FFFFFF; }
     .mode-btn.active {
         color: #FFFFFF;
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.16);
+        background-color: #181818;
+        border-color: #313131;
     }
     .omnibox-controls { width: 100%; }
 
-    /* Inputs and Buttons */
+    /* Inputs, Selects, Sliders & Buttons */
     .scan-form {
         display: flex;
         align-items: center;
         gap: 8px;
         flex-wrap: wrap;
     }
-    .text-input {
-        flex: 1 1 320px;
-        background: rgba(8, 7, 12, 0.85);
+    .text-input, .select-input {
+        background-color: #000000;
         color: #FFFFFF;
         font-family: 'Geist Mono', monospace;
         font-size: 14px;
         line-height: 20px;
-        padding: 8px 16px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 8px 12px;
+        border: 1px solid #272727;
         border-radius: 8px;
         outline: none;
-        transition: border-color 150ms ease, box-shadow 150ms ease;
+        transition: border-color 150ms ease;
     }
-    .text-input:focus {
-        border-color: #FF7A98;
-        box-shadow: 0 0 16px rgba(255, 122, 152, 0.25);
+    .text-input { flex: 1 1 320px; }
+    .text-input:focus, .select-input:focus { border-color: #FFFFFF; }
+    .range-input {
+        width: 100%;
+        accent-color: #FFFFFF;
+        cursor: pointer;
+    }
+    .slider-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
     }
     .btn {
-        background: rgba(255, 255, 255, 0.06);
+        background-color: #1F1F1F;
         color: #FFFFFF;
         font-family: 'Geist', sans-serif;
         font-size: 14px;
         line-height: 20px;
         font-weight: 500;
-        padding: 8px 16px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 8px 12px;
+        border: 1px solid #272727;
         border-radius: 8px;
         cursor: pointer;
         transition: background-color 150ms ease, border-color 150ms ease, transform 120ms ease;
     }
     .btn:hover {
-        background: rgba(255, 255, 255, 0.12);
-        border-color: rgba(255, 255, 255, 0.24);
-        transform: scale(1.01);
+        background-color: #272727;
+        border-color: #313131;
     }
-    .btn:active { transform: scale(0.98); }
+    .btn:active { transform: scale(0.985); }
     .btn-primary {
-        background: #FFFFFF;
-        color: #06050A;
+        background-color: #FFFFFF;
+        color: #000000;
         font-weight: 600;
         border: 1px solid #FFFFFF;
     }
     .btn-primary:hover {
-        background: #F4FEFF;
-        border-color: #F4FEFF;
-        box-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
+        background-color: #E2E2E2;
+        border-color: #E2E2E2;
     }
 
     .preset-strip {
@@ -348,25 +327,23 @@ PAGE_CSS = """
     .preset-caption {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
+        color: #9B9B9B;
         font-weight: 500;
     }
     .preset-pill {
-        background: rgba(255, 255, 255, 0.05);
-        color: #E2E8F0;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: #000000;
+        color: #FFFFFF;
+        border: 1px solid #272727;
         border-radius: 9999px;
         padding: 4px 12px;
         font-size: 12px;
         line-height: 16px;
         cursor: pointer;
-        transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
+        transition: background-color 150ms ease, border-color 150ms ease;
     }
     .preset-pill:hover {
-        background: rgba(255, 122, 152, 0.16);
-        border-color: #FF7A98;
-        color: #FFFFFF;
-        box-shadow: 0 0 12px rgba(255, 122, 152, 0.28);
+        background-color: #1F1F1F;
+        border-color: #313131;
     }
 
     .uci-controls-row {
@@ -379,9 +356,9 @@ PAGE_CSS = """
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #9B9B9B;
+        background-color: #000000;
+        border: 1px solid #272727;
         border-radius: 8px;
         padding: 8px 12px;
     }
@@ -390,8 +367,8 @@ PAGE_CSS = """
         align-items: center;
         gap: 12px;
         flex: 1 1 320px;
-        background: rgba(8, 7, 12, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        background-color: #000000;
+        border: 1px solid #272727;
         border-radius: 8px;
         padding: 8px 12px;
     }
@@ -406,17 +383,16 @@ PAGE_CSS = """
         flex: 1 1 auto;
     }
 
-    /* Raycast Forensic Split Workbench */
+    /* Split-Pane Forensic Workbench */
     .workbench-grid {
         display: grid;
         grid-template-columns: 380px minmax(0, 1fr);
         gap: 24px;
         align-items: start;
     }
-    @media (max-width: 1040px) {
-        .workbench-grid { grid-template-columns: 1fr; }
-    }
     .dossier-sticky {
+        position: sticky;
+        top: 24px;
         display: flex;
         flex-direction: column;
         gap: 16px;
@@ -427,26 +403,22 @@ PAGE_CSS = """
         gap: 16px;
     }
 
-    /* Panels & Cards */
+    /* Elevated Panel Surface */
     .panel {
-        background: rgba(14, 12, 18, 0.85);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: #181818;
+        border: 1px solid #272727;
         border-radius: 16px;
-        padding: 20px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 36px rgba(0, 0, 0, 0.5);
-        transition: border-color 150ms ease;
+        padding: 24px;
+        transition: border-color 180ms ease;
     }
-    .panel:hover {
-        border-color: rgba(255, 255, 255, 0.16);
-    }
+    .panel:hover { border-color: #313131; }
     .panel-head {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
         margin-bottom: 16px;
+        flex-wrap: wrap;
     }
     .panel-title {
         font-size: 14px;
@@ -457,31 +429,52 @@ PAGE_CSS = """
     .panel-meta {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
+        color: #9B9B9B;
     }
 
-    /* Verdict Card */
-    .verdict-card {
-        background: rgba(14, 12, 18, 0.9);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 16px;
-        padding: 24px;
-        transition: box-shadow 260ms ease, border-color 260ms ease;
+    /* Verdict Dossier Card */
+    .verdict-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        font-weight: 500;
+        margin-bottom: 12px;
     }
-    .verdict-card.threat {
-        border-color: rgba(255, 22, 42, 0.4);
-        box-shadow: 0 0 36px rgba(255, 22, 42, 0.22);
+    .verdict-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
     }
-    .verdict-card.safe {
-        border-color: rgba(5, 223, 114, 0.4);
-        box-shadow: 0 0 36px rgba(5, 223, 114, 0.22);
-    }
-    .verdict-top {
+    .verdict-hero-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 16px;
         margin-bottom: 12px;
+    }
+    .verdict-score-col {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .verdict-score-value {
+        font-family: 'Geist Mono', monospace;
+        font-size: 36px;
+        line-height: 40px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+    .verdict-ring-svg {
+        width: 72px;
+        height: 72px;
+        flex-shrink: 0;
+    }
+    .verdict-ring-arc {
+        transition: stroke-dashoffset 420ms cubic-bezier(0.16, 1, 0.3, 1);
+        animation: ringDraw 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
     }
     .status-pill {
         display: inline-flex;
@@ -491,104 +484,111 @@ PAGE_CSS = """
         font-size: 12px;
         line-height: 16px;
         font-weight: 500;
-        padding: 4px 10px;
+        padding: 4px 8px;
         border-radius: 9999px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: #000000;
+        border: 1px solid #272727;
+        width: fit-content;
     }
     .verdict-title {
-        font-size: 24px;
-        line-height: 32px;
-        font-weight: 700;
+        font-size: 20px;
+        line-height: 28px;
+        font-weight: 600;
         margin-bottom: 4px;
     }
     .verdict-sub {
-        font-size: 12px;
-        line-height: 16px;
-        color: #94A3B8;
+        font-size: 14px;
+        line-height: 20px;
+        color: #9B9B9B;
         margin-bottom: 16px;
     }
-    .verdict-score-row {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
+
+    /* Population Risk Ruler */
+    .ruler-wrap {
+        position: relative;
+        padding: 8px 0;
         margin-bottom: 8px;
     }
-    .verdict-score-lbl {
-        font-size: 12px;
-        line-height: 16px;
-        color: #94A3B8;
-        font-weight: 500;
-    }
-    .verdict-score-num {
-        font-family: 'Geist Mono', monospace;
-        font-size: 30px;
-        line-height: 36px;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* Progress & Meters */
-    .bar-track {
-        width: 100%;
+    .ruler-track {
+        display: grid;
+        grid-template-columns: 35fr 30fr 35fr;
         height: 8px;
-        background: rgba(255, 255, 255, 0.06);
         border-radius: 9999px;
         overflow: hidden;
+        background-color: #000000;
+        border: 1px solid #272727;
     }
-    .bar-fill {
-        height: 100%;
-        border-radius: 9999px;
-        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    .ruler-zone-safe { background-color: #1F1F1F; }
+    .ruler-zone-warn { background-color: #272727; }
+    .ruler-zone-crit { background-color: #313131; }
+    .ruler-threshold {
+        position: absolute;
+        left: 50%;
+        top: 4px;
+        width: 2px;
+        height: 16px;
+        background-color: #9B9B9B;
+        transform: translateX(-50%);
     }
-    .fill-threat {
-        background: linear-gradient(90deg, #B80232 0%, #FF162A 100%);
-        box-shadow: 0 0 12px rgba(255, 22, 42, 0.4);
+    .ruler-needle {
+        position: absolute;
+        top: 2px;
+        width: 4px;
+        height: 20px;
+        border-radius: 2px;
+        transform: translateX(-50%);
+        transition: left 320ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .fill-safe {
-        background: linear-gradient(90deg, #0284C7 0%, #05DF72 100%);
-        box-shadow: 0 0 12px rgba(5, 223, 114, 0.4);
+    .ruler-legend {
+        display: flex;
+        justify-content: space-between;
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        margin-bottom: 16px;
     }
 
-    /* Hairline Grids */
+    /* Hairline Grids (1px structural dividers) */
     .hairline-grid-2 {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        background-color: #272727;
+        border: 1px solid #272727;
+        border-radius: 8px;
         overflow: hidden;
     }
     .hairline-grid-4 {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 1px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        background-color: #272727;
+        border: 1px solid #272727;
+        border-radius: 8px;
         overflow: hidden;
     }
     .hairline-grid-5 {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
         gap: 1px;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        background-color: #272727;
+        border: 1px solid #272727;
+        border-radius: 8px;
         overflow: hidden;
     }
-    @media (max-width: 800px) {
-        .hairline-grid-4, .hairline-grid-5 { grid-template-columns: 1fr 1fr; }
-    }
     .h-cell {
-        background: rgba(14, 12, 18, 0.95);
+        background-color: #000000;
+        padding: 12px 16px;
+    }
+    .h-cell-surface {
+        background-color: #181818;
         padding: 12px 16px;
     }
     .cell-label {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
+        color: #9B9B9B;
         margin-bottom: 4px;
     }
     .cell-value {
@@ -599,47 +599,57 @@ PAGE_CSS = """
         color: #FFFFFF;
         font-variant-numeric: tabular-nums;
     }
-
-    /* URL Anatomy Bar */
-    .specimen-url-bar {
-        background: rgba(8, 7, 12, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        padding: 12px 16px;
+    .rail-val {
         font-family: 'Geist Mono', monospace;
         font-size: 14px;
         line-height: 20px;
-        word-break: break-all;
-        margin-bottom: 16px;
+        font-weight: 600;
+        color: #FFFFFF;
+        word-break: break-word;
+        margin-bottom: 8px;
     }
-    .url-token {
-        padding: 2px 4px;
-        border-radius: 4px;
-        transition: background-color 150ms ease;
-    }
-    .url-token:hover { background: rgba(255, 255, 255, 0.1); }
-    .token-crit { color: #FF7A98; }
-    .token-warn { color: #F59E0B; }
-    .token-safe { color: #05DF72; }
-    .token-muted { color: #94A3B8; }
-
-    /* Consensus Rows */
-    .consensus-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .consensus-item {
-        background: rgba(8, 7, 12, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 10px;
-        padding: 12px;
-    }
-    .consensus-head {
-        display: flex;
+    .rail-badge {
+        display: inline-flex;
         align-items: center;
+        gap: 4px;
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        padding: 2px 8px;
+        border-radius: 9999px;
+        background-color: #181818;
+        border: 1px solid #272727;
+    }
+
+    /* Progress Bars */
+    .bar-track, .recourse-track {
+        width: 100%;
+        height: 6px;
+        background-color: #1F1F1F;
+        border-radius: 9999px;
+        overflow: hidden;
+    }
+    .bar-fill, .recourse-fill {
+        height: 100%;
+        border-radius: 9999px;
+        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Consensus List */
+    .consensus-row {
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    .consensus-row:last-child { margin-bottom: 0; }
+    .consensus-top {
+        display: flex;
         justify-content: space-between;
-        margin-bottom: 6px;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
     }
     .consensus-name {
         font-size: 12px;
@@ -647,69 +657,86 @@ PAGE_CSS = """
         font-weight: 600;
         color: #FFFFFF;
     }
-    .consensus-pct {
+    .consensus-meta {
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
-        font-weight: 600;
-    }
-
-    /* Population Risk Ruler */
-    .ruler-container {
-        margin: 16px 0;
-    }
-    .ruler-track {
-        position: relative;
-        height: 8px;
-        background: rgba(255, 255, 255, 0.06);
-        border-radius: 9999px;
-        margin: 12px 0;
-    }
-    .ruler-needle {
-        position: absolute;
-        top: -4px;
-        width: 4px;
-        height: 16px;
-        background: #FFFFFF;
-        border-radius: 2px;
-        transform: translateX(-50%);
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
-        transition: left 320ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .ruler-thresh-marker {
-        position: absolute;
-        top: -2px;
-        left: 50%;
-        width: 2px;
-        height: 12px;
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateX(-50%);
     }
 
     /* Recourse Guidance */
     .recourse-list {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-    }
-    .recourse-card {
-        background: rgba(8, 7, 12, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 10px;
-        padding: 12px;
+        gap: 8px;
     }
     .recourse-feat {
+        font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
         font-weight: 600;
         color: #FFFFFF;
+    }
+    .recourse-item {
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+    .recourse-item:last-child { margin-bottom: 0; }
+    .recourse-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
         margin-bottom: 4px;
     }
-    .recourse-desc {
+    .recourse-meta {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
+        color: #9B9B9B;
+        margin-bottom: 4px;
+    }
+    .recourse-copy {
+        font-size: 12px;
+        line-height: 16px;
+        color: #FFFFFF;
         margin-bottom: 8px;
+    }
+    .recourse-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    /* URL Specimen Bar */
+    .specimen-url-bar {
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+        line-height: 20px;
+        word-break: break-all;
+        margin-bottom: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .specimen-token {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background-color: #181818;
+        border: 1px solid #272727;
+    }
+    .specimen-delta {
+        font-size: 12px;
+        line-height: 16px;
+        opacity: 0.9;
     }
 
     /* Diverging Butterfly Attributions */
@@ -720,26 +747,28 @@ PAGE_CSS = """
     }
     .attr-row {
         display: grid;
-        grid-template-columns: 220px 110px 1fr 70px;
+        grid-template-columns: 240px 110px 1fr 72px;
         gap: 12px;
         align-items: center;
-        background: rgba(8, 7, 12, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 10px;
-        padding: 10px 14px;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 12px;
         transition: border-color 150ms ease, background-color 150ms ease;
     }
     .attr-row:hover {
-        background: rgba(14, 12, 18, 0.95);
-        border-color: rgba(255, 255, 255, 0.16);
+        border-color: #313131;
+        background-color: #1F1F1F;
     }
     .attr-feat-row {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-bottom: 2px;
+        gap: 8px;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
     }
     .attr-name {
+        font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
         font-weight: 600;
@@ -748,15 +777,16 @@ PAGE_CSS = """
     .attr-domain {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
-        background: rgba(255, 255, 255, 0.04);
+        color: #9B9B9B;
+        background-color: #181818;
+        border: 1px solid #272727;
         padding: 2px 6px;
         border-radius: 4px;
     }
     .attr-copy {
         font-size: 12px;
         line-height: 16px;
-        color: #94A3B8;
+        color: #9B9B9B;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -769,8 +799,8 @@ PAGE_CSS = """
     .butterfly-track {
         position: relative;
         width: 100%;
-        height: 10px;
-        background: rgba(255, 255, 255, 0.04);
+        height: 8px;
+        background-color: #181818;
         border-radius: 4px;
         overflow: hidden;
     }
@@ -780,26 +810,24 @@ PAGE_CSS = """
         top: 0;
         bottom: 0;
         width: 1px;
-        background: rgba(255, 255, 255, 0.2);
+        background-color: #313131;
     }
     .butterfly-fill-right {
         position: absolute;
         left: 50%;
-        top: 1px;
-        bottom: 1px;
-        background: linear-gradient(90deg, #B80232 0%, #FF162A 100%);
-        border-radius: 0 3px 3px 0;
-        box-shadow: 0 0 10px rgba(255, 22, 42, 0.45);
+        top: 0;
+        bottom: 0;
+        background-color: #F43F5E;
+        border-radius: 0 4px 4px 0;
         transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .butterfly-fill-left {
         position: absolute;
         right: 50%;
-        top: 1px;
-        bottom: 1px;
-        background: linear-gradient(270deg, #0284C7 0%, #00F2FE 100%);
-        border-radius: 3px 0 0 3px;
-        box-shadow: 0 0 10px rgba(0, 242, 254, 0.45);
+        top: 0;
+        bottom: 0;
+        background-color: #10B981;
+        border-radius: 4px 0 0 4px;
         transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .attr-delta {
@@ -814,14 +842,14 @@ PAGE_CSS = """
     /* Interactive State Pills */
     .state-toggle-group {
         display: inline-flex;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: #181818;
+        border: 1px solid #272727;
         border-radius: 6px;
         padding: 2px;
     }
     .state-pill {
-        background: transparent;
-        color: #94A3B8;
+        background-color: transparent;
+        color: #9B9B9B;
         border: 1px solid transparent;
         border-radius: 4px;
         font-family: 'Geist Mono', monospace;
@@ -829,33 +857,31 @@ PAGE_CSS = """
         line-height: 16px;
         padding: 2px 6px;
         cursor: pointer;
-        transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+        transition: background-color 140ms ease, color 140ms ease;
     }
     .state-pill:hover { color: #FFFFFF; }
     .state-pill.active-risk {
-        background: #FF162A;
+        background-color: #F43F5E;
         color: #FFFFFF;
-        box-shadow: 0 0 10px rgba(255, 22, 42, 0.5);
+        font-weight: 600;
     }
     .state-pill.active-warn {
-        background: #F59E0B;
-        color: #06050A;
-        box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        background-color: #F59E0B;
+        color: #000000;
+        font-weight: 600;
     }
     .state-pill.active-safe {
-        background: #05DF72;
-        color: #06050A;
-        box-shadow: 0 0 10px rgba(5, 223, 114, 0.5);
+        background-color: #10B981;
+        color: #000000;
+        font-weight: 600;
     }
 
-    /* Model Evaluation & Feature Catalog */
-    .eval-grid {
+    /* Model Evaluation & Tables */
+    .eval-split {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 24px;
-    }
-    @media (max-width: 900px) {
-        .eval-grid { grid-template-columns: 1fr; }
+        margin-bottom: 24px;
     }
     .svg-box {
         width: 100%;
@@ -868,9 +894,9 @@ PAGE_CSS = """
         gap: 12px;
     }
     .cm-cell {
-        background: rgba(8, 7, 12, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
         padding: 16px;
         display: flex;
         flex-direction: column;
@@ -884,48 +910,134 @@ PAGE_CSS = """
         font-weight: 700;
         color: #FFFFFF;
     }
-    .catalog-grid {
+    .global-row {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 16px;
+        grid-template-columns: 200px 1fr 72px;
+        gap: 12px;
+        align-items: center;
+        padding: 8px 0;
     }
-    .catalog-card {
-        background: rgba(14, 12, 18, 0.85);
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 16px;
+    .hairline-rows {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        transition: border-color 150ms ease, background-color 150ms ease;
-    }
-    .catalog-card:hover {
-        border-color: rgba(255, 255, 255, 0.18);
-        background: rgba(20, 18, 26, 0.95);
-    }
-    .cat-rule-box {
-        background: rgba(8, 7, 12, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        gap: 1px;
+        background-color: #272727;
+        border: 1px solid #272727;
         border-radius: 8px;
-        padding: 8px 12px;
+        overflow: hidden;
+    }
+    .table-row-8 {
+        display: grid;
+        grid-template-columns: 1.6fr repeat(7, 1fr);
+        gap: 1px;
+        background-color: #272727;
+    }
+    .table-cell-head {
+        background-color: #1F1F1F;
+        color: #9B9B9B;
+        font-size: 12px;
+        line-height: 16px;
+        font-weight: 600;
+        padding: 12px;
+    }
+    .table-cell {
+        background-color: #000000;
+        color: #FFFFFF;
         font-family: 'Geist Mono', monospace;
         font-size: 12px;
         line-height: 16px;
-        color: #E2E8F0;
+        padding: 12px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Feature Catalog */
+    .catalog-filters {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 12px;
+    }
+    .catalog-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    .catalog-card {
+        background-color: #181818;
+        border: 1px solid #272727;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 12px;
+        transition: border-color 150ms ease;
+    }
+    .catalog-card:hover { border-color: #313131; }
+    .catalog-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+    .catalog-name {
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+        line-height: 20px;
+        font-weight: 600;
+        color: #FFFFFF;
+        word-break: break-all;
+    }
+    .catalog-rule {
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+        background-color: #000000;
+        border: 1px solid #272727;
+        border-radius: 8px;
+        padding: 8px 12px;
+        word-break: break-word;
+    }
+    .prev-head, .prev-legend {
+        display: flex;
+        justify-content: space-between;
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        line-height: 16px;
+        color: #9B9B9B;
+    }
+    .prev-track {
+        display: flex;
+        height: 8px;
+        border-radius: 4px;
+        background-color: #272727;
+        overflow: hidden;
+        margin: 4px 0;
     }
 
     .footer-note {
         text-align: center;
         font-size: 12px;
         line-height: 16px;
-        color: #64748B;
-        margin-top: 48px;
+        color: #9B9B9B;
+        padding: 32px 0 0 0;
     }
     .attr-extra-hidden { display: none !important; }
 
+    @media (max-width: 1024px) {
+        .workbench-grid { grid-template-columns: 1fr; }
+        .dossier-sticky { position: static; }
+        .attr-row, .global-row { grid-template-columns: 1fr; gap: 8px; }
+        .eval-split, .catalog-filters, .catalog-grid { grid-template-columns: 1fr; }
+        .hairline-grid-4, .hairline-grid-5 { grid-template-columns: repeat(2, 1fr); }
+        .table-row-8 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .container { padding: 16px 16px 48px 16px; }
+        .hairline-grid-2, .hairline-grid-4, .hairline-grid-5, .table-row-8 { grid-template-columns: 1fr; }
+    }
     @media (prefers-reduced-motion: reduce) {
-        *, .bar-fill, .ruler-needle, .butterfly-fill-left, .butterfly-fill-right {
+        *, .bar-fill, .recourse-fill, .ruler-needle, .butterfly-fill-left, .butterfly-fill-right, .verdict-ring-arc {
             animation: none !important;
             transition: none !important;
         }
@@ -933,86 +1045,6 @@ PAGE_CSS = """
 """
 
 CONSOLE_JS = """
-    function initRaycastCanvas() {
-        const canvas = document.getElementById('raycast-hero-canvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        let w = 0, h = 0, time = 0, animId = null;
-        const count = 16;
-        const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
-        function resize() {
-            const r = canvas.parentElement.getBoundingClientRect();
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            w = r.width;
-            h = r.height;
-            canvas.width = Math.floor(w * dpr);
-            canvas.height = Math.floor(h * dpr);
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.scale(dpr, dpr);
-        }
-        window.addEventListener('resize', resize);
-        window.addEventListener('mousemove', function(e) {
-            mouse.tx = e.clientX / window.innerWidth;
-            mouse.ty = e.clientY / window.innerHeight;
-        });
-        resize();
-
-        function render() {
-            time += 0.008;
-            mouse.x += (mouse.tx - mouse.x) * 0.05;
-            mouse.y += (mouse.ty - mouse.y) * 0.05;
-
-            ctx.fillStyle = '#06050A';
-            ctx.fillRect(0, 0, w, h);
-
-            const angle = -0.66;
-            ctx.save();
-            const cx = w * 0.5 + (mouse.x - 0.5) * 60;
-            const cy = h * 0.5 + (mouse.y - 0.5) * 40;
-            ctx.translate(cx, cy);
-            ctx.rotate(angle);
-
-            const span = Math.max(w, h);
-            const tubeSpacing = span * 1.8 / count;
-            const tubeWidth = tubeSpacing * 0.72;
-            const tubeLength = span * 2.8;
-
-            for (let i = -count; i <= count; i++) {
-                const ox = i * tubeSpacing;
-                const phase = time + i * 0.28;
-                const bright = 0.7 + 0.3 * Math.sin(phase * 1.2);
-
-                const grad = ctx.createLinearGradient(ox - tubeWidth * 0.5, 0, ox + tubeWidth * 0.5, 0);
-                grad.addColorStop(0.00, 'rgba(6, 4, 10, 0.98)');
-                grad.addColorStop(0.12, 'rgba(0, 210, 255, 0.22)');
-                grad.addColorStop(0.28, 'rgba(184, 2, 50, ' + (0.50 * bright).toFixed(3) + ')');
-                grad.addColorStop(0.55, 'rgba(255, 122, 152, ' + (0.95 * bright).toFixed(3) + ')');
-                grad.addColorStop(0.68, 'rgba(244, 254, 255, ' + (0.88 * bright).toFixed(3) + ')');
-                grad.addColorStop(0.85, 'rgba(255, 22, 42, ' + (0.65 * bright).toFixed(3) + ')');
-                grad.addColorStop(1.00, 'rgba(6, 4, 10, 0.98)');
-
-                ctx.fillStyle = grad;
-                ctx.fillRect(ox - tubeWidth * 0.5, -tubeLength * 0.5, tubeWidth, tubeLength);
-            }
-            ctx.restore();
-
-            const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, Math.min(w, h) * 0.2, w * 0.5, h * 0.5, Math.max(w, h) * 0.85);
-            vig.addColorStop(0.0, 'rgba(6, 5, 10, 0.15)');
-            vig.addColorStop(0.5, 'rgba(6, 5, 10, 0.55)');
-            vig.addColorStop(1.0, 'rgba(6, 5, 10, 0.95)');
-            ctx.fillStyle = vig;
-            ctx.fillRect(0, 0, w, h);
-
-            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-                animId = requestAnimationFrame(render);
-            }
-        }
-        render();
-    }
-
     function tweenTextNumber(el, targetVal, decimals, suffix) {
         if (!el) return;
         const startVal = parseFloat(el.dataset.val || String(targetVal));
@@ -1432,17 +1464,25 @@ def diagnose_uci(idx):
 
 
 def _render_verdict_dossier_card(title, subtitle, risk_pct, result, sec_title, sec_val):
-    """Renders left dossier verdict hero, integrated threshold ruler, and 2x2 hairline telemetry."""
+    """Renders left dossier verdict hero, radial SVG gauge, threshold ruler, and 2x2 telemetry."""
     color = TONE_COLORS[risk_tone(risk_pct)]
     clamped = min(98.0, max(2.0, risk_pct))
+    dash_off = 175.93 * (1.0 - min(100.0, max(0.0, risk_pct)) / 100.0)
     base_v = result["base_value"]
     net_m = sum(d["shap_value"] for d in result["all_features"]) + base_v
+    ring_svg = (
+        f'<svg class="verdict-ring-svg" viewBox="0 0 72 72" aria-hidden="true">'
+        f'<circle cx="36" cy="36" r="28" fill="none" stroke="#272727" stroke-width="5"/>'
+        f'<circle class="verdict-ring-arc" cx="36" cy="36" r="28" fill="none" stroke="{color}" '
+        f'stroke-width="5" stroke-linecap="round" stroke-dasharray="175.93" stroke-dashoffset="{dash_off:.2f}" '
+        f'transform="rotate(-90 36 36)"/></svg>'
+    )
     return (
         f'<div class="panel workbench-fade">'
         f'<div class="verdict-eyebrow"><span class="verdict-dot" style="background-color: {color};"></span>Automated classification</div>'
-        f'<div class="verdict-score-row">'
+        f'<div class="verdict-hero-row"><div class="verdict-score-col">'
         f'<div id="verdict-score-num" class="verdict-score-value" data-val="{risk_pct:.1f}" style="color: {color};">{risk_pct:.1f}%</div>'
-        f'<span class="status-pill" style="color: {color};">Threshold 50.0%</span></div>'
+        f'<span class="status-pill" style="color: {color};">Threshold 50.0%</span></div>{ring_svg}</div>'
         f'<div class="verdict-title" style="color: {color};">{html.escape(title)}</div>'
         f'<div class="verdict-sub">{html.escape(subtitle)}</div>'
         f'<div class="ruler-wrap"><div class="ruler-track"><div class="ruler-zone-safe"></div><div class="ruler-zone-warn"></div><div class="ruler-zone-crit"></div></div>'
@@ -1727,7 +1767,7 @@ def build_diagnose_payload(mode="uci", url=None, idx=DEFAULT_UCI_IDX, overrides=
 def _format_uci_controls(uci_res, is_active):
     """Formats command omnibox UCI benchmark record stepper and banner."""
     display = "block" if is_active else "none"
-    truth_color = "#e57373" if uci_res["true_label"] == "Phishing" else "#81c784"
+    truth_color = "#F43F5E" if uci_res["true_label"] == "Phishing" else "#10B981"
     return (
         f'<div id="controls-uci" style="display: {display};"><div class="uci-controls-row">'
         f'<button type="button" class="btn btn-primary" onclick="pickRandomUci()">Pick random record</button>'
@@ -1803,7 +1843,7 @@ def _render_roc_svg(scores):
         f'<polyline fill="none" stroke="#FFFFFF" stroke-width="2" points="{p_xgb30}"/>'
         f'<line id="roc-guide-x" x1="72" y1="30" x2="72" y2="256" stroke="#616161" stroke-dasharray="3 3" stroke-width="1"/>'
         f'<line id="roc-guide-y" x1="56" y1="30" x2="72" y2="30" stroke="#616161" stroke-dasharray="3 3" stroke-width="1"/>'
-        f'<circle id="roc-active-dot" cx="72" cy="30" r="5" fill="#e57373" stroke="#FFFFFF" stroke-width="1.5"/>'
+        f'<circle id="roc-active-dot" cx="72" cy="30" r="5" fill="#F43F5E" stroke="#FFFFFF" stroke-width="1.5"/>'
         f'<text x="276" y="292" fill="#9B9B9B" font-family="Geist" font-size="11" text-anchor="middle">False positive rate</text>'
         f'</svg>'
     )
@@ -1812,10 +1852,10 @@ def _render_roc_svg(scores):
 def _render_cm_matrix():
     """Renders 2x2 HTML/CSS hairline Confusion Matrix quadrants updated live in JS."""
     cells = (
-        ("tn", "True negative", "Actual legitimate / Predicted legitimate", "#81c784"),
-        ("fp", "False positive", "Actual legitimate / Predicted phishing", "#e57373"),
-        ("fn", "False negative", "Actual phishing / Predicted legitimate", "#e57373"),
-        ("tp", "True positive", "Actual phishing / Predicted phishing", "#81c784"),
+        ("tn", "True negative", "Actual legitimate / Predicted legitimate", "#10B981"),
+        ("fp", "False positive", "Actual legitimate / Predicted phishing", "#F43F5E"),
+        ("fn", "False negative", "Actual phishing / Predicted legitimate", "#F43F5E"),
+        ("tp", "True positive", "Actual phishing / Predicted phishing", "#10B981"),
     )
     items = "".join(
         f'<div class="cm-cell"><div><div class="cell-label" style="color: {color};">{lbl}</div>'
@@ -1915,7 +1955,7 @@ def _format_catalog_card(name, meta, prevalence):
     is_live = meta.get("extractable_live", False)
     mode_tag = "Live lexical only" if is_live else "Offline network and DOM"
     badge_text = "Live lexical" if is_live else ("Legacy API" if meta.get("deprecated", False) else "Offline record")
-    badge_color = "#81c784" if is_live else "#9B9B9B"
+    badge_color = "#10B981" if is_live else "#9B9B9B"
     p_phish, p_susp, p_legit = prevalence
     group_clean = _clean_copy(meta.get("group", ""))
     desc_clean = _clean_copy(meta.get("description", ""))
@@ -1980,59 +2020,49 @@ def _active_cls(current, target):
 
 
 def _render_topbar(active_tab):
-    """Renders persistent Raycast floating navigation header and segmented tabs."""
-    tab_defs = (("inspect", "Diagnostic inspection"), ("eval", "Model evaluation"), ("catalog", "Feature catalog"))
+    """Renders persistent classy monochrome navigation bar and segmented tabs."""
+    tab_defs = (("inspect", "URL inspection"), ("eval", "Model evaluation"), ("catalog", "Feature catalog"))
     tab_btns = "".join(
         f'<button type="button" data-tab="{tid}" class="tab-btn {_active_cls(active_tab, tid)}" '
         f'onclick="switchTab(\'{tid}\')">{lbl}</button>'
         for tid, lbl in tab_defs
     )
     logo_svg = (
-        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">'
-        '<path d="M12 2L2 12L12 22L22 12L12 2Z" fill="#FF162A"/>'
-        '<path d="M12 6L6 12L12 18L18 12L12 6Z" fill="#06050A"/>'
-        '<path d="M12 9L9 12L12 15L15 12L12 9Z" fill="#FF7A98"/>'
-        '</svg>'
+        '<svg width="16" height="14" viewBox="0 0 16 14" fill="none" aria-hidden="true">'
+        '<path d="M8 0L16 14H0L8 0Z" fill="#FFFFFF"/></svg>'
     )
     return (
-        f'<header class="raycast-navbar">'
-        f'<div class="brand-group">{logo_svg}'
-        f'<span class="brand-name">PhishLens</span>'
-        f'<span class="brand-chip">Security intelligence</span></div>'
+        f'<header class="topbar"><div class="brand-group">{logo_svg}'
+        f'<span class="brand-name">PhishLens</span><span class="brand-sep">/</span>'
+        f'<span class="brand-sub">Threat intelligence</span></div>'
         f'<nav class="tab-bar">{tab_btns}</nav>'
-        f'<div class="status-chip"><span class="status-dot"></span><span>TreeSHAP ready</span></div>'
-        f'</header>'
+        f'<div class="status-chip"><span class="status-dot"></span><span>TreeSHAP ready</span></div></header>'
     )
 
 
 def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspect", overrides=None):
-    """Renders the complete standalone Raycast-style PhishLens HTML document."""
+    """Renders the complete standalone classy PhishLens forensic HTML document."""
     data = load_runtime_data()
     live_url = url or DEFAULT_LIVE_URL
     uci_payload = build_diagnose_payload("uci", idx=idx)
     live_payload = build_diagnose_payload("live", url=live_url, overrides=overrides)
     active_diag = live_payload if mode == "live" else uci_payload
     inspect_html = _render_inspect_tab(mode, live_url, uci_payload, live_payload, active_diag)
-    boot_script = f'window.__evalData = {json.dumps(_build_eval_bootstrap(data))}; initRaycastCanvas(); drawEvalCharts();'
+    boot_script = f'window.__evalData = {json.dumps(_build_eval_bootstrap(data))}; drawEvalCharts();'
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        '<title>PhishLens | Malicious Link Detection</title>'
+        '<title>PhishLens | Threat Intelligence</title>'
         '<link rel="preconnect" href="https://fonts.googleapis.com">'
         '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
         '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap">'
-        f'<style>{PAGE_CSS}</style></head><body>'
+        f'<style>{PAGE_CSS}</style></head><body><div class="container">'
         f'{_render_topbar(tab)}'
-        '<div class="hero-stage">'
-        '<canvas id="raycast-hero-canvas"></canvas>'
-        '<div class="hero-content">'
-        '<h1 class="hero-title">Your shortcut to malicious link detection.</h1>'
-        '<p class="hero-subtitle">A collection of explainable machine learning models in one security workbench. Fast, ergonomic and verifiable.</p>'
-        '</div></div>'
-        '<div class="container">'
+        '<div class="hero-band"><div class="hero-heading">Evaluate website security with transparent reasoning</div>'
+        '<div class="hero-sub">Exact game theoretic feature attributions, population calibration, and actionable counterfactual recourse.</div></div>'
         f'<div id="panel-inspect" class="tab-panel {_active_cls(tab, "inspect")}">{inspect_html}</div>'
         f'<div id="panel-eval" class="tab-panel {_active_cls(tab, "eval")}">{_render_eval_tab(data)}</div>'
         f'<div id="panel-catalog" class="tab-panel {_active_cls(tab, "catalog")}">{_render_catalog_tab(data)}</div>'
-        '<div class="footer-note">PhishLens research system &#8226; Built for transparent threat intelligence</div>'
+        '<div class="footer-note">PhishLens research system &#8226; Built for explainable threat intelligence</div>'
         f'</div><script>{CONSOLE_JS}\n{boot_script}</script></body></html>'
     )
