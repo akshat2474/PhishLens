@@ -194,16 +194,6 @@ def _build_uci_consensus(rec):
     ]
 
 
-def build_client_lattice():
-    """Returns the compact 576 state lookup table used for instant client side what if changes."""
-    bundle = load_runtime_data()["bundle"]
-    states = {}
-    for key, entry in bundle["live_grid"].items():
-        prob = round(float(entry["prob"]), 4)
-        states[key] = [prob, [round(float(s), 4) for s in entry["shaps"]]]
-    return {"base": round(float(bundle["live_base_value"]), 4), "states": states}
-
-
 def _valid_override(idx, val, vec_len):
     """Checks index bounds and discrete value domain for sandbox override."""
     return 0 <= idx < vec_len and val in (-1, 0, 1)
@@ -227,16 +217,12 @@ def diagnose_live(raw_url, overrides=None):
     bundle = data["bundle"]
     clean_url = sanitize_url(raw_url or DEFAULT_LIVE_URL)
     extracted = extract_live_lexical_features(clean_url)
-    base_vec = [int(extracted[f]) for f in LIVE_FEATURES]
     vec, has_overrides = _apply_live_overrides(extracted, overrides)
     entry = bundle["live_grid"][",".join(map(str, vec))]
     attributions = _assemble_attributions(LIVE_FEATURES, vec, entry["shaps"], data["catalog"])
     return {
         "clean_url": clean_url,
         "has_overrides": has_overrides,
-        "base_vector": base_vec,
-        "live_vector": vec,
-        "live_shaps": [round(float(s), 4) for s in entry["shaps"]],
         "feature_values": dict(zip(LIVE_FEATURES, vec)),
         "prediction": "Phishing" if entry["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": entry["prob"],
@@ -258,19 +244,10 @@ def diagnose_uci(idx):
     features = list(data["catalog"]["features"].keys())
     attributions = _assemble_attributions(features, rec["vals"], rec["shaps"], data["catalog"])
     true_label = "Phishing" if rec["label"] == 1 else "Legitimate"
-    clean_url = sanitize_url(rec["url"])
-    lex_dict = extract_live_lexical_features(clean_url)
-    lex_vec = [int(lex_dict[f]) for f in LIVE_FEATURES]
-    shaps_by_name = dict(zip(features, rec["shaps"]))
-    lex_shaps = [round(float(shaps_by_name.get(f, 0.0)), 4) for f in LIVE_FEATURES]
     return {
         "idx": safe_idx,
         "url": rec["url"],
-        "clean_url": clean_url,
         "true_label": true_label,
-        "base_vector": lex_vec,
-        "live_vector": lex_vec,
-        "live_shaps": lex_shaps,
         "prediction": "Phishing" if rec["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": rec["prob"],
         "base_value": data["bundle"]["full_base_value"],

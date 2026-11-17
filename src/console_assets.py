@@ -3,8 +3,6 @@ Static stylesheet and client script for the PhishLens web console.
 Calm charcoal document layout: content sits on the page, color is reserved for small marks.
 """
 
-from src.demo_stage import DEMO_CSS, DEMO_JS
-
 PAGE_CSS = """
 :root {
     --bg: #181818;
@@ -108,7 +106,25 @@ button { cursor: pointer; }
 /* Results */
 #inspect-results { transition: opacity 200ms; }
 #inspect-results.loading { opacity: 0.5; }
-.results { margin-top: 0; animation: rise 360ms var(--ease) both; }
+.results { margin-top: 32px; animation: rise 360ms var(--ease) both; }
+.verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
+.tag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 600; }
+.tag-note { font-size: 12px; line-height: 16px; color: var(--muted); font-weight: 400; }
+.dot { width: 8px; height: 8px; border-radius: 9999px; flex: none; }
+.url {
+    margin-top: 12px; font-family: var(--mono); font-size: 18px; line-height: 28px;
+    color: var(--text); word-break: break-all;
+}
+.url-risk { text-decoration: underline; text-decoration-color: var(--risk); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.url-hint { margin-top: 12px; font-size: 12px; line-height: 16px; color: var(--faint); }
+.score { text-align: right; }
+.score-num { font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.score-cap { margin-top: 8px; font-size: 12px; line-height: 16px; color: var(--faint); }
+.gauge { position: relative; height: 4px; margin-top: 32px; border-radius: 9999px; background: var(--raised); }
+.gauge-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 9999px; transform-origin: left center; animation: grow 700ms var(--ease) both; }
+.gauge-mid { position: absolute; left: 50%; transform: translateX(-50%); }
+.gauge-tick { position: absolute; left: 50%; top: -4px; width: 1px; height: 12px; background: var(--faint); }
+.gauge-scale { position: relative; display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); }
 
 .models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 32px 0; }
 .model-name { font-size: 12px; line-height: 16px; color: var(--faint); }
@@ -121,16 +137,18 @@ button { cursor: pointer; }
 .section-title { font-size: 20px; line-height: 28px; font-weight: 600; color: #FFFFFF; }
 .section-sub { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); max-width: 680px; text-wrap: pretty; }
 
-/* Benchmark signal list */
+/* Drivers */
 .drivers { --cols: minmax(0, 1.5fr) minmax(0, 1fr) 72px; }
+.drivers.live { --cols: minmax(0, 1.5fr) 112px minmax(0, 1fr) 72px; }
 .axis, .driver { display: grid; grid-template-columns: var(--cols); gap: 24px; align-items: center; }
 .axis { padding: 0 0 8px; font-size: 12px; line-height: 16px; color: var(--faint); }
 .axis-labels { display: flex; justify-content: space-between; }
+.axis-spacer { min-width: 0; }
 .driver { padding: 12px; margin: 0 -12px; border-radius: 8px; transition: background-color 150ms; }
 .driver:hover { background: var(--surface); }
 .driver-extra { display: none; }
 .show-all .driver-extra { display: grid; animation: rise 240ms var(--ease) both; }
-.driver-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 600; color: #FFFFFF; }
+.driver-name { display: flex; align-items: baseline; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 600; color: #FFFFFF; }
 .driver-key { font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); font-weight: 400; }
 .driver-text {
     margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--muted); text-wrap: pretty;
@@ -138,27 +156,29 @@ button { cursor: pointer; }
 }
 .driver:hover .driver-text { -webkit-line-clamp: 3; }
 .track { position: relative; height: 16px; }
-.track::before { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 16px; background: #313131; }
+.track::before { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 16px; background: var(--line-strong); }
 .fill { position: absolute; top: 5px; height: 6px; border-radius: 9999px; animation: grow 600ms var(--ease) both; }
 .fill-up { left: 50%; background: var(--risk); transform-origin: left center; }
 .fill-down { right: 50%; background: var(--safe); transform-origin: right center; }
 .driver-val { font-family: var(--mono); font-size: 16px; line-height: 24px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* What would make this link safer */
-.fix {
-    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center;
-    padding: 16px; margin-bottom: 8px; border-radius: 12px;
-    background: var(--surface); border: 1px solid var(--line);
-    transition: background-color 150ms, border-color 150ms;
+.pick {
+    display: inline-flex; gap: 2px; padding: 2px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
 }
-.fix[role="button"] { cursor: pointer; }
-.fix[role="button"]:hover { background: var(--raised); border-color: var(--safe); }
-.fix-badge {
-    font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 400;
-    color: var(--safe); padding: 2px 8px; border-radius: 9999px; border: 1px solid #313131;
+.pick-btn {
+    background: none; border: 0; min-width: 32px; padding: 2px 8px; border-radius: 4px;
+    font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint);
+    transition: color 150ms, background-color 150ms;
 }
-.fix-text { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); text-wrap: pretty; }
-.fix-gain { font-family: var(--mono); font-size: 16px; line-height: 24px; font-weight: 500; color: var(--safe); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pick-btn:hover { color: var(--text); }
+.pick-btn.on { background: var(--raised); color: var(--text); }
+
+/* Fixes */
+.fix { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: baseline; padding: 12px; margin: 0 -12px; border-radius: 8px; transition: background-color 150ms; }
+.fix:hover { background: var(--surface); }
+.fix-text { margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--muted); text-wrap: pretty; }
+.fix-gain { font-family: var(--mono); font-size: 16px; line-height: 24px; font-weight: 600; color: var(--safe); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* Evaluation */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
@@ -244,17 +264,21 @@ button { cursor: pointer; }
 @media (max-width: 760px) {
     .page { padding: 0 16px 48px; }
     .nav-meta { display: none; }
+    .verdict { grid-template-columns: 1fr; gap: 24px; }
+    .score { text-align: left; }
     .models, .stats, .thresh-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
     .split, .cat-grid { grid-template-columns: 1fr; }
     .drivers { --cols: minmax(0, 1fr) 64px; }
-    .drivers .track, .axis { display: none; }
+    .drivers.live { --cols: minmax(0, 1fr) auto 64px; }
     .counter, .driver-key { display: none; }
     .nav-tab { padding: 8px; }
+    .drivers .track, .axis { display: none; }
     .imp { grid-template-columns: 120px minmax(0, 1fr) 48px; }
 }
-""" + DEMO_CSS
+"""
 
-CONSOLE_JS = "const $ = (id) => document.getElementById(id);\n" + DEMO_JS + """
+CONSOLE_JS = """
+const $ = (id) => document.getElementById(id);
 window.__overrides = {};
 
 function tween(el, target, decimals, suffix) {
@@ -278,7 +302,6 @@ function switchTab(name) {
     document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
     if (name === 'eval') drawEvalCharts();
-    if (name === 'inspect') Demo.init();
 }
 
 function totalRecords() {
@@ -290,11 +313,15 @@ function syncControls(data) {
         $('uci-url-text').textContent = data.url;
         $('uci-idx-input').value = String(data.idx);
         $('uci-record-counter').textContent = (data.idx + 1).toLocaleString() + ' / ' + totalRecords().toLocaleString();
+        return;
     }
+    $('reset-overrides-btn').hidden = !data.has_overrides;
 }
 
 async function loadDiagnosis(params) {
     const box = $('inspect-results');
+    const prevEl = $('verdict-score-num');
+    const prev = prevEl ? prevEl.dataset.val : null;
     const showAll = !!document.querySelector('.drivers.show-all');
     box.classList.add('loading');
     try {
@@ -304,7 +331,8 @@ async function loadDiagnosis(params) {
         box.innerHTML = data.html;
         syncControls(data);
         if (showAll) toggleDrivers(true);
-        Demo.init();
+        const el = $('verdict-score-num');
+        if (el && prev !== null) { el.dataset.val = prev; tween(el, data.risk_pct, 1, '%'); }
     } finally {
         box.classList.remove('loading');
     }
@@ -334,66 +362,15 @@ function submitLiveScan(ev) {
     if (liveUrl()) loadDiagnosis({ mode: 'live', url: liveUrl() });
 }
 
-/* What if changes: the whole 576 state table ships with the page, so a change is instant */
-function latticeEntry(vec) {
-    return window.__liveLattice ? window.__liveLattice.states[vec.join(',')] : null;
-}
-
-function renderFixList(vec, prob) {
-    const sec = $('fixes-section'), list = $('fixes-list'), demo = Demo.state();
-    if (!sec || !list) return;
-    const rows = [];
-    for (let i = 0; i < 8; i++) {
-        const next = vec[i] === 1 ? null : latticeEntry(vec.map((v, k) => (k === i ? 1 : v)));
-        const drop = next ? (prob - next[0]) * 100 : 0;
-        if (drop > 1) rows.push({ i, drop });
-    }
-    rows.sort((a, b) => b.drop - a.drop);
-    sec.hidden = rows.length === 0;
-    list.innerHTML = rows.slice(0, 3).map(r =>
-        `<div class="fix" role="button" tabindex="0" onclick="applyCounterfactual(${r.i}, 1)" `
-        + `onmouseenter="previewOverride(${r.i}, 1)" onmouseleave="clearPreview()">`
-        + `<div><div class="driver-name">${demo.labels[r.i]}<span class="fix-badge">Click to try</span></div>`
-        + `<div class="fix-text">Make this part safe and the probability drops by ${r.drop.toFixed(1)} points.</div></div>`
-        + `<div class="fix-gain">\u2212${r.drop.toFixed(1)} points</div></div>`
-    ).join('');
-}
-
-function applyVec(vec) {
-    const entry = latticeEntry(vec);
-    if (!entry) return false;
-    Demo.apply(vec, entry[1]);
-    renderFixList(vec, entry[0]);
-    const base = Demo.state().base;
-    const reset = $('reset-overrides-btn');
-    if (reset) reset.hidden = !vec.some((v, i) => v !== base[i]);
-    Demo.ghost(null);
-    return true;
-}
-
-function applyCounterfactual(idx, val) { setFeatureOverride(idx, val); }
-
 function setFeatureOverride(idx, val) {
     window.__overrides['f_' + idx] = val;
-    const state = Demo.state();
-    if (state.vec && applyVec(state.vec.map((v, i) => (i === idx ? val : v)))) return;
     loadDiagnosis(Object.assign({ mode: 'live', url: liveUrl() }, window.__overrides));
 }
 
 function resetLiveOverrides() {
     window.__overrides = {};
-    const state = Demo.state();
-    if (state.base && applyVec(state.base.slice())) return;
     loadDiagnosis({ mode: 'live', url: liveUrl() });
 }
-
-function previewOverride(idx, val) {
-    const state = Demo.state();
-    const entry = state.vec ? latticeEntry(state.vec.map((v, i) => (i === idx ? val : v))) : null;
-    if (entry) Demo.ghost(entry[0] * 100);
-}
-
-function clearPreview() { Demo.ghost(null); }
 
 function pickRandomUci() {
     loadDiagnosis({ mode: 'uci', idx: Math.floor(Math.random() * totalRecords()) });

@@ -8,7 +8,6 @@ import json
 import time
 
 from src.console_assets import CONSOLE_JS, PAGE_CSS
-from src.demo_stage import PART_LABELS, render_demo_stage
 from src.feature_extractor import LIVE_FEATURES
 from src.vercel_console import (
     DEFAULT_LIVE_URL,
@@ -17,7 +16,9 @@ from src.vercel_console import (
     _clean_copy,
     _fmt_delta,
     _fmt_state_val,
-    build_client_lattice,
+    _parse_url_tokens,
+    _resolve_rail_cells,
+    _specimen_segments,
     diagnose_live,
     diagnose_uci,
     load_runtime_data,
@@ -27,6 +28,8 @@ from src.vercel_console import (
 TONES = {"critical": "#E5484D", "warning": "#E2A336", "safe": "#30A46C"}
 RISK, SAFE, NEUTRAL = TONES["critical"], TONES["safe"], "#7A7A7A"
 TOP_DRIVERS = 8
+TERNARY_LIVE_FEATURES = frozenset({"URL_Length", "having_Sub_Domain"})
+VERDICT_LABELS = {"critical": "Likely phishing", "warning": "Suspicious", "safe": "Looks legitimate"}
 
 FEATURE_NAMES = {
     "having_IP_Address": "IP address as host",
@@ -92,7 +95,49 @@ def _active(current, target, cls="active"):
     return cls if current == target else ""
 
 
-# Walkthrough, fixes, and benchmark detail
+# Verdict
+
+
+def _url_segment(seg, shap_val):
+    """Wraps one URL segment, underlining parts that raise risk."""
+    if shap_val > 0.01:
+        return f'<span class="url-risk" title="Raises risk by {_fmt_delta(shap_val, 3)} log odds">{esc(seg)}</span>'
+    return f"<span>{esc(seg)}</span>"
+
+
+def _render_url(url, result):
+    """Renders the inspected address with risky segments underlined."""
+    tokens = _parse_url_tokens(url)
+    shaps = {d["feature"]: d["shap_value"] for d in result["all_features"]}
+    segments = _specimen_segments(tokens, _resolve_rail_cells(tokens, shaps))
+    parts = "".join(_url_segment(seg, s) for seg, s in segments)
+    has_risk = any(s > 0.01 for _, s in segments)
+    hint = '<div class="url-hint">Underlined parts of the address raise the risk score.</div>' if has_risk else ""
+    return f'<div class="url">{parts}</div>{hint}'
+
+
+def _render_gauge(risk_pct, color):
+    """Renders a thin probability gauge with a decision threshold tick at 50 percent."""
+    return (
+        f'<div class="gauge"><div class="gauge-fill" style="width: {clamp_pct(risk_pct):.1f}%; background: {color};"></div>'
+        f'<div class="gauge-tick" title="Decision threshold"></div></div>'
+        f'<div class="gauge-scale"><span>0</span><span class="gauge-mid">Threshold 50</span><span>100</span></div>'
+    )
+
+
+def _render_verdict(url, note, risk_pct, result):
+    """Renders verdict tag, inspected URL, large probability readout, and gauge."""
+    tone = risk_tone(risk_pct)
+    color = TONES[tone]
+    return (
+        f'<section class="verdict"><div>'
+        f'<div class="tag"><span class="dot" style="background: {color};"></span>{VERDICT_LABELS[tone]}'
+        f'<span class="tag-note">{esc(note)}</span></div>'
+        f'{_render_url(url, result)}</div>'
+        f'<div class="score"><div id="verdict-score-num" class="score-num" data-val="{risk_pct:.1f}">{risk_pct:.1f}%</div>'
+        f'<div class="score-cap">Phishing probability</div></div></section>'
+        f'{_render_gauge(risk_pct, color)}'
+    )
 
 
 def _model_item(entry):
@@ -107,15 +152,37 @@ def _model_item(entry):
 
 
 def _render_models(result):
-    """Renders the three model agreement row for benchmark records."""
+    """Renders the three model agreement row."""
     return f'<section class="models">{"".join(map(_model_item, result["consensus"]))}</section>'
 
 
-def _driver_bar(shap_val, max_abs):
+# Drivers
+
+
+def _pick_button(idx, opt, current):
+    """Renders one counterfactual state button for live mode."""
+    return (
+        f'<button type="button" class="pick-btn {_active(opt, current, "on")}" '
+        f'onclick="setFeatureOverride({idx}, {opt})">{_fmt_state_val(opt)}</button>'
+    )
+
+
+def _state_picker(item):
+    """Renders the counterfactual state picker for a live lexical feature."""
+    idx = LIVE_FEATURES.index(item["feature"])
+    opts = (-1, 0, 1) if item["feature"] in TERNARY_LIVE_FEATURES else (-1, 1)
+    buttons = "".join(_pick_button(idx, opt, item["value"]) for opt in opts)
+    return f'<div class="pick" title="Change this signal to see how the score moves">{buttons}</div>'
+
+
+def _driver_bar(shap_val, max_abs, delay_ms):
     """Renders a diverging bar: right raises risk, left lowers it."""
     width = min(50.0, abs(shap_val) / max_abs * 50.0)
     side = "fill-up" if shap_val > 0 else "fill-down"
-    return f'<div class="track"><div class="fill {side}" style="width: {width:.1f}%;"></div></div>'
+    return (
+        f'<div class="track"><div class="fill {side}" '
+        f'style="width: {width:.1f}%; animation-delay: {delay_ms}ms;"></div></div>'
+    )
 
 
 def _driver_value_color(shap_val):
@@ -125,88 +192,92 @@ def _driver_value_color(shap_val):
     return RISK if shap_val > 0 else SAFE
 
 
-def _driver_row(item, max_abs, idx):
-    """Renders one benchmark feature contribution row."""
+def _driver_row(mode, item, max_abs, idx):
+    """Renders one feature contribution row."""
     shap_val = item["shap_value"]
-    extra = " driver-extra" if idx >= TOP_DRIVERS else ""
+    extra = " driver-extra" if mode == "uci" and idx >= TOP_DRIVERS else ""
+    picker = f"<div>{_state_picker(item)}</div>" if mode == "live" else ""
     return (
         f'<div class="driver{extra}"><div>'
         f'<div class="driver-name">{esc(feature_label(item["feature"]))}'
         f'<span class="driver-key">{esc(item["feature"])} {_fmt_state_val(item["value"])}</span></div>'
         f'<div class="driver-text">{esc(item["human_text"])}</div></div>'
-        f'{_driver_bar(shap_val, max_abs)}'
+        f'{picker}{_driver_bar(shap_val, max_abs, min(idx, TOP_DRIVERS) * 40)}'
         f'<div class="driver-val" style="color: {_driver_value_color(shap_val)};">{_fmt_delta(shap_val, 3)}</div></div>'
     )
 
 
-def _render_drivers(result):
-    """Renders the full TreeSHAP contribution list for benchmark records."""
-    drivers = result["all_features"]
-    max_abs = max([abs(d["shap_value"]) for d in drivers] + [0.1])
-    rows = "".join(_driver_row(item, max_abs, idx) for idx, item in enumerate(drivers))
+def _drivers_head(mode, has_overrides):
+    """Renders the drivers section header with a mode specific control."""
+    sub = (
+        "Each signal pushes the score up or down. Change a signal to see the effect."
+        if mode == "live"
+        else "Each signal pushes the score up or down, measured in TreeSHAP log odds."
+    )
     toggle = (
         '<div class="seg"><button id="drivers-top-btn" type="button" class="seg-btn active" '
         'onclick="toggleDrivers(false)">Top 8</button><button id="drivers-all-btn" type="button" '
         'class="seg-btn" onclick="toggleDrivers(true)">All 30</button></div>'
     )
+    reset = f'<button id="reset-overrides-btn" type="button" class="btn" onclick="resetLiveOverrides()"{"" if has_overrides else " hidden"}>Reset signals</button>'
+    control = toggle if mode == "uci" else reset
     return (
-        f'<section class="section"><div class="section-head"><div><div class="section-title">All signals</div>'
-        f'<div class="section-sub">Every signal the model read, measured in TreeSHAP log odds.</div></div>{toggle}</div>'
-        f'<div class="drivers"><div class="axis"><div></div>'
+        f'<div class="section-head"><div><div class="section-title">What drove this score</div>'
+        f'<div class="section-sub">{sub}</div></div>{control}</div>'
+    )
+
+
+def _drivers_axis(mode):
+    """Renders the axis caption above the diverging bars."""
+    spacer = '<div class="axis-spacer"></div>' if mode == "live" else ""
+    return (
+        f'<div class="axis"><div class="axis-spacer"></div>{spacer}'
         f'<div class="axis-labels"><span>Lowers risk</span><span>Raises risk</span></div>'
-        f'<div style="text-align: right;">Log odds</div></div>{rows}</div></section>'
+        f'<div style="text-align: right;">Log odds</div></div>'
     )
 
 
-def _fix_title(feat):
-    """Returns the short readable name of the part a fix changes."""
-    if feat in LIVE_FEATURES:
-        return PART_LABELS[LIVE_FEATURES.index(feat)]
-    return feature_label(feat)
-
-
-def _fix_attrs(mode, idx):
-    """Returns interactive click and hover attributes for live mode fixes."""
-    if mode != "live" or idx < 0:
-        return 'class="fix fix-static"', ""
-    attrs = (
-        f'class="fix" role="button" tabindex="0" onclick="applyCounterfactual({idx}, 1)" '
-        f'onmouseenter="previewOverride({idx}, 1)" onmouseleave="clearPreview()"'
-    )
-    return attrs, '<span class="fix-badge">Click to try</span>'
-
-
-def _fix_row(mode, hint):
-    """Renders one what if suggestion; live suggestions replay the change on the walkthrough."""
-    feat = hint["feature"]
-    idx = LIVE_FEATURES.index(feat) if feat in LIVE_FEATURES else -1
-    attrs, badge = _fix_attrs(mode, idx)
+def _render_drivers(mode, result):
+    """Renders the feature contribution section."""
+    drivers = result["all_features"]
+    max_abs = max([abs(d["shap_value"]) for d in drivers] + [0.1])
+    rows = "".join(_driver_row(mode, item, max_abs, idx) for idx, item in enumerate(drivers))
+    live_cls = " live" if mode == "live" else ""
     return (
-        f'<div {attrs}>'
-        f'<div><div class="driver-name">{esc(_fix_title(feat))}{badge}</div>'
-        f'<div class="fix-text">Make this part safe and the probability drops by {hint["risk_reduction_pct"]:.1f} points.</div></div>'
-        f'<div class="fix-gain">\u2212{hint["risk_reduction_pct"]:.1f} points</div></div>'
+        f'<section class="section"><div class="rule" style="margin-bottom: 32px;"></div>{_drivers_head(mode, result.get("has_overrides", False))}'
+        f'<div class="drivers{live_cls}">{_drivers_axis(mode)}{rows}</div></section>'
     )
 
 
-def _render_fixes(mode, hints):
-    """Renders what would lower the score; hidden when nothing would."""
-    hidden = "" if hints else " hidden"
-    rows = "".join(_fix_row(mode, h) for h in (hints or [])[:3])
+def _fix_row(hint):
+    """Renders one counterfactual suggestion row."""
     return (
-        f'<section id="fixes-section" class="section"{hidden}><div class="section-head"><div>'
-        f'<div class="section-title">What would make this link safer</div>'
-        f'<div class="section-sub">The single changes with the biggest drop in phishing probability.</div>'
-        f'</div></div><div id="fixes-list">{rows}</div></section>'
+        f'<div class="fix"><div><div class="driver-name">{esc(feature_label(hint["feature"]))}</div>'
+        f'<div class="fix-text">{esc(_clean_copy(hint["guidance"]))}</div></div>'
+        f'<div class="fix-gain">\u2212{hint["risk_reduction_pct"]:.1f}%</div></div>'
+    )
+
+
+def _render_fixes(hints):
+    """Renders counterfactual suggestions, or nothing when there are none."""
+    if not hints:
+        return ""
+    return (
+        f'<section class="section"><div class="section-head"><div>'
+        f'<div class="section-title">What would lower the score</div>'
+        f'<div class="section-sub">Single signal changes with the largest drop in phishing probability.</div>'
+        f'</div></div>{"".join(_fix_row(h) for h in hints[:3])}</section>'
     )
 
 
 def _results_html(mode, url, note, result):
-    """Assembles the walkthrough, suggestions, and benchmark detail for one diagnosis."""
-    stage = render_demo_stage(url, result, note, result.get("has_overrides", False), mode)
-    tail = f"{_render_models(result)}{_render_drivers(result)}" if mode == "uci" else ""
-    fixes = _render_fixes(mode, result.get("counterfactual_hints") or [])
-    return f'<div id="results-root" class="results" data-mode="{mode}">{stage}{fixes}{tail}</div>'
+    """Assembles the full result block for one diagnosis."""
+    risk_pct = result["phishing_probability"] * 100.0
+    return (
+        f'<div class="results">{_render_verdict(url, note, risk_pct, result)}'
+        f'{_render_models(result)}{_render_drivers(mode, result)}'
+        f'{_render_fixes(result.get("counterfactual_hints") or [])}</div>'
+    )
 
 
 def _live_payload(url, overrides):
@@ -236,7 +307,7 @@ def _uci_payload(idx):
         "url": res["url"],
         "true_label": res["true_label"],
         "risk_pct": round(res["phishing_probability"] * 100.0, 1),
-        "html": _results_html("uci", res["clean_url"], note, res),
+        "html": _results_html("uci", res["url"], note, res),
     }
 
 
@@ -513,7 +584,7 @@ def _panel(tab_id, active_tab, body):
     return f'<main id="panel-{tab_id}" class="panel {_active(active_tab, tab_id)}">{body}</main>'
 
 
-def render_full_page_html(mode="live", url=None, idx=DEFAULT_UCI_IDX, tab="inspect", overrides=None):
+def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspect", overrides=None):
     """Renders the complete PhishLens console HTML document."""
     data = load_runtime_data()
     live_url = url or DEFAULT_LIVE_URL
@@ -521,8 +592,7 @@ def render_full_page_html(mode="live", url=None, idx=DEFAULT_UCI_IDX, tab="inspe
     active = build_diagnose_payload("live", url=live_url, overrides=overrides) if mode == "live" else uci_payload
     test_eval = data["bundle"]["test_eval"]
     total = len(test_eval["y_true"])
-    boot = json.dumps({"y_true": test_eval["y_true"], "y_probs": test_eval["y_probs"]}, separators=(",", ":"))
-    lattice = json.dumps(build_client_lattice(), separators=(",", ":"))
+    boot = json.dumps({"y_true": test_eval["y_true"], "y_probs": test_eval["y_probs"]})
     inspect = _render_inspect_tab(mode, live_url, uci_payload, total, active)
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -536,5 +606,5 @@ def render_full_page_html(mode="live", url=None, idx=DEFAULT_UCI_IDX, tab="inspe
         f'{_panel("inspect", tab, inspect)}{_panel("eval", tab, _render_eval_tab(data))}'
         f'{_panel("catalog", tab, _render_catalog_tab(data))}'
         '<footer class="footer">PhishLens. Research prototype for explainable phishing detection.</footer>'
-        f'</div><script>{CONSOLE_JS}\nwindow.__evalData = {boot};\nwindow.__liveLattice = {lattice};\nDemo.init(); drawEvalCharts();</script></body></html>'
+        f'</div><script>{CONSOLE_JS}\nwindow.__evalData = {boot}; drawEvalCharts();</script></body></html>'
     )
