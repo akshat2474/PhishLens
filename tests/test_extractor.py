@@ -106,7 +106,7 @@ def test_feature_vector_ordering():
 
 
 def test_576_lattice_bijection_and_telemetry_ui():
-    """All 576 live grid states must map to unique (col, row) coordinates and render all 4 telemetry stages."""
+    """All 576 live grid states must map to unique (col, row) coordinates and render the 8-part URL breakdown."""
     from src.vercel_console import build_client_lattice, diagnose_live, vec_to_coord
     from src.console_ui import build_diagnose_payload, render_full_page_html
 
@@ -120,11 +120,12 @@ def test_576_lattice_bijection_and_telemetry_ui():
     diag = diagnose_live("http://https-paypal-account-update.com/auth")
     assert diag["matrix_coord"] == vec_to_coord(diag["live_vector"])
     assert len(diag["calipers"]) == 8
+    assert len(diag["url_slices"]) == 8
 
     payload = build_diagnose_payload("live", url="http://https-paypal-account-update.com/auth")
-    assert "shredder-stage" in payload["html"]
-    assert "matrix-svg" in payload["html"]
-    assert "spring-card" in payload["html"]
+    assert "fracture-strip" in payload["html"]
+    assert "fchip-0" in payload["html"]
+    assert "rel-pct" in payload["html"]
     assert "fixes-section" in payload["html"]
     assert 'data-feat="Prefix_Suffix"' in payload["html"]
 

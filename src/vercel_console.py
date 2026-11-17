@@ -279,6 +279,44 @@ def _apply_live_overrides(feats_dict, overrides):
     return vec, vec != base_vec
 
 
+def _slice_for_Redirect(clean_url):
+    """Extracts the path segment or embedded double slash redirect substring."""
+    pos = clean_url.rfind("//")
+    if pos > 7:
+        return clean_url[pos:pos + 28]
+    parsed = urllib.parse.urlsplit(clean_url)
+    return parsed.path if parsed.path and parsed.path != "/" else "/"
+
+
+def _slice_for_subdomains(tokens, host):
+    """Extracts the subdomain chain or registered domain root."""
+    if tokens["subdomain"] != "none":
+        return f"{tokens['subdomain']}."
+    return host or "domain"
+
+
+def _host_or_fallback(host, tokens):
+    """Returns lowercase host or fallback token host."""
+    return host or tokens["host"]
+
+
+def extract_eight_url_slices(clean_url):
+    """Extracts the 8 concrete URL substrings corresponding to LIVE_FEATURES."""
+    tokens = _parse_url_tokens(clean_url)
+    host = _netloc_part(clean_url)
+    base_host = _host_or_fallback(host, tokens)
+    return [
+        base_host,
+        f"{len(clean_url)} chars ({clean_url[:18]}...)",
+        base_host,
+        "@" if "@" in clean_url else "no @ in address",
+        _slice_for_Redirect(clean_url),
+        base_host if "-" in base_host else f"{base_host} (0 dashes)",
+        _slice_for_subdomains(tokens, base_host),
+        "https in host" if "https" in base_host else tokens["scheme"],
+    ]
+
+
 def diagnose_live(raw_url, overrides=None):
     """Evaluates a URL or 8 feature sandbox vector from the precomputed live grid."""
     data = load_runtime_data()
@@ -296,6 +334,7 @@ def diagnose_live(raw_url, overrides=None):
         "base_vector": base_vec,
         "live_vector": vec,
         "live_shaps": [round(float(s), 4) for s in entry["shaps"]],
+        "url_slices": extract_eight_url_slices(clean_url),
         "calipers": measure_lexical_calipers(clean_url, vec),
         "matrix_coord": (col, row),
         "feature_values": dict(zip(LIVE_FEATURES, vec)),
@@ -332,6 +371,7 @@ def diagnose_uci(idx):
         "base_vector": lex_vec,
         "live_vector": lex_vec,
         "live_shaps": lex_shaps,
+        "url_slices": extract_eight_url_slices(clean_url),
         "calipers": measure_lexical_calipers(clean_url, lex_vec),
         "matrix_coord": vec_to_coord(lex_vec),
         "prediction": "Phishing" if rec["prob"] >= 0.50 else "Legitimate",
