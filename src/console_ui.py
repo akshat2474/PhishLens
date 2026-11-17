@@ -19,6 +19,7 @@ from src.vercel_console import (
     _parse_url_tokens,
     _resolve_rail_cells,
     _specimen_segments,
+    build_client_lattice,
     diagnose_live,
     diagnose_uci,
     load_runtime_data,
@@ -26,10 +27,20 @@ from src.vercel_console import (
 )
 
 TONES = {"critical": "#E5484D", "warning": "#E2A336", "safe": "#30A46C"}
-RISK, SAFE, NEUTRAL = TONES["critical"], TONES["safe"], "#7A7A7A"
+RISK, SAFE, NEUTRAL, SNAP_RISK = TONES["critical"], TONES["safe"], "#7A7A7A", "#E57373"
 TOP_DRIVERS = 8
 TERNARY_LIVE_FEATURES = frozenset({"URL_Length", "having_Sub_Domain"})
 VERDICT_LABELS = {"critical": "Likely phishing", "warning": "Suspicious", "safe": "Looks legitimate"}
+SHORT_LIVE_LABELS = (
+    "IP host",
+    "URL length",
+    "Shortener",
+    "At symbol",
+    "Redirect //",
+    "Domain dash",
+    "Subdomains",
+    "HTTPS token",
+)
 
 FEATURE_NAMES = {
     "having_IP_Address": "IP address as host",
@@ -95,74 +106,239 @@ def _active(current, target, cls="active"):
     return cls if current == target else ""
 
 
-# Verdict
+# Verdict and 4-Stage Telemetry
 
 
-def _url_segment(seg, shap_val):
-    """Wraps one URL segment, underlining parts that raise risk."""
+def _morph_chars(escaped_seg):
+    """Wraps targetable malicious characters in morphable inline spans."""
+    out = escaped_seg.replace("-", '<span class="morph-token morph-dash" data-feat="Prefix_Suffix">-</span>')
+    out = out.replace("@", '<span class="morph-token morph-at" data-feat="having_At_Symbol">@</span>')
+    if "https" in out and "://" not in out:
+        out = out.replace("https", '<span class="morph-token morph-https" data-feat="HTTPS_token">https</span>', 1)
+    if "//" in out and "://" not in out:
+        out = out.replace("//", '<span class="morph-token morph-slash" data-feat="double_slash_redirecting">/</span>/', 1)
+    return out
+
+
+def _segment_morph_wrap(idx, seg, inner):
+    """Wraps subdomain or IP host segments in morphable feature containers."""
+    if idx == 1 and seg != "none":
+        return f'<span class="morph-token morph-sub" data-feat="having_Sub_Domain">{inner}</span>'
+    if idx == 2 and seg.replace(".", "").isdigit():
+        return f'<span class="morph-token morph-ip" data-feat="having_IP_Address">{inner}</span>'
+    return inner
+
+
+def _url_segment(idx, seg, shap_val):
+    """Wraps one URL segment with morph targets and risk underlining."""
+    inner = _segment_morph_wrap(idx, seg, _morph_chars(esc(seg)))
     if shap_val > 0.01:
-        return f'<span class="url-risk" title="Raises risk by {_fmt_delta(shap_val, 3)} log odds">{esc(seg)}</span>'
-    return f"<span>{esc(seg)}</span>"
+        return f'<span class="url-seg url-risk" data-seg="{idx}" title="Raises risk by {_fmt_delta(shap_val, 3)} log odds">{inner}</span>'
+    return f'<span class="url-seg" data-seg="{idx}">{inner}</span>'
 
 
 def _render_url(url, result):
-    """Renders the inspected address with risky segments underlined."""
+    """Renders the inspected address with morphable tokens and risky segments underlined."""
     tokens = _parse_url_tokens(url)
     shaps = {d["feature"]: d["shap_value"] for d in result["all_features"]}
-    segments = _specimen_segments(tokens, _resolve_rail_cells(tokens, shaps))
-    parts = "".join(_url_segment(seg, s) for seg, s in segments)
+    cells = _resolve_rail_cells(tokens, shaps)
+    segments = _specimen_segments(tokens, cells)
+    parts = "".join(_url_segment(i, seg, s) for i, (seg, s) in enumerate(segments))
     has_risk = any(s > 0.01 for _, s in segments)
-    hint = '<div class="url-hint">Underlined parts of the address raise the risk score.</div>' if has_risk else ""
-    return f'<div class="url">{parts}</div>{hint}'
+    hint = '<div class="url-hint">Underlined parts raise the risk score. Click any recourse fix below to morph the URL live.</div>' if has_risk else ""
+    return f'<div id="specimen-url" class="url">{parts}</div>{hint}'
 
 
 def _render_gauge(risk_pct, color):
-    """Renders a thin probability gauge with a decision threshold tick at 50 percent."""
+    """Renders a probability gauge with a mechanical needle, hover ghost, and threshold tick."""
+    clamped = clamp_pct(risk_pct)
     return (
-        f'<div class="gauge"><div class="gauge-fill" style="width: {clamp_pct(risk_pct):.1f}%; background: {color};"></div>'
+        f'<div class="gauge">'
+        f'<div id="gauge-fill" class="gauge-fill" style="width: {clamped:.1f}%; background: {color};"></div>'
+        f'<div id="gauge-ghost" class="gauge-ghost" hidden></div>'
+        f'<div id="gauge-needle" class="gauge-needle" style="left: {clamped:.1f}%;"></div>'
         f'<div class="gauge-tick" title="Decision threshold"></div></div>'
-        f'<div class="gauge-scale"><span>0</span><span class="gauge-mid">Threshold 50</span><span>100</span></div>'
+        f'<div class="gauge-scale"><span>0% legitimate</span><span class="gauge-mid">Threshold 50%</span><span>100% phishing</span></div>'
+    )
+
+
+def _matrix_dot_rect(col, row, active_col, active_row):
+    """Renders one 2x2 pixel combinatorial state node in the 64 by 9 lookup SVG."""
+    is_act = col == active_col and row == active_row
+    cls = "m-dot active" if is_act else "m-dot"
+    size = 4 if is_act else 2
+    offset = -1 if is_act else 0
+    x, y = 12 + col * 6 + offset, 14 + row * 6 + offset
+    return f'<rect class="{cls}" data-c="{col}" data-r="{row}" x="{x}" y="{y}" width="{size}" height="{size}"/>'
+
+
+def _render_matrix_collapse(result):
+    """Renders the 576-node (64x9) O(1) lookup grid and 90-degree orthogonal routing path."""
+    col, row = result.get("matrix_coord", (0, 0))
+    node_num = row * 64 + col + 1
+    dx, dy = 13 + col * 6, 15 + row * 6
+    dots = "".join(_matrix_dot_rect(c, r, col, row) for r in range(9) for c in range(64))
+    route_d = f"M {dx} {dy} L {dx} 74 L 412 74 L 412 24"
+    return (
+        f'<div class="matrix-box">'
+        f'<div class="matrix-head">'
+        f'<span class="matrix-title">576 state precomputed lookup grid (64 binary × 9 ternary)</span>'
+        f'<span id="matrix-coord-tag" class="matrix-meta">Node [{col}, {row}] (#{node_num} of 576) · O(1) hash fetch</span></div>'
+        f'<svg id="matrix-svg" class="matrix-svg" viewBox="0 0 420 82" role="img" aria-label="576 state lookup matrix">'
+        f'<line id="matrix-cross-v" x1="{dx}" y1="8" x2="{dx}" y2="68" stroke="#313131" stroke-width="1"/>'
+        f'<line id="matrix-cross-h" x1="8" y1="{dy}" x2="396" y2="{dy}" stroke="#313131" stroke-width="1"/>'
+        f'{dots}'
+        f'<path id="matrix-ghost-path" class="matrix-ghost-path" d="" fill="none"/>'
+        f'<path id="matrix-route-path" class="matrix-route-path" d="{route_d}" fill="none"/>'
+        f'<circle id="matrix-route-term" cx="412" cy="24" r="2.5" fill="#FFFFFF"/></svg></div>'
+    )
+
+
+def _shred_token_block(idx, cell):
+    """Renders one fractured URI token card for the lexical shredder."""
+    label, val, feat_label, shap_val = cell
+    risk_cls = " risk-lock" if shap_val > 0.01 else ""
+    delta_col = SNAP_RISK if shap_val > 0.01 else (SAFE if shap_val < -0.01 else NEUTRAL)
+    return (
+        f'<div class="shred-block{risk_cls}" data-token-idx="{idx}">'
+        f'<div class="shred-Head"><span class="shred-lbl">{esc(label)}</span>'
+        f'<span class="shred-delta" style="color: {delta_col};">{_fmt_delta(shap_val, 2)}</span></div>'
+        f'<div class="shred-val">{_morph_chars(esc(val))}</div>'
+        f'<div class="shred-feat">{esc(feat_label)}</div></div>'
+    )
+
+
+def _vec_register_slot(idx, feat, val, caliper):
+    """Renders one of the 8 Geist Mono feature vector slots beneath the fractured URL."""
+    risk_cls = " risk-lock" if val < 0 else ""
+    fmt_val = _fmt_state_val(val)
+    return (
+        f'<div id="vec-slot-{idx}" class="vec-slot{risk_cls}" data-feat="{feat}" data-idx="{idx}">'
+        f'<span class="vec-lbl">{esc(SHORT_LIVE_LABELS[idx])}</span>'
+        f'<span id="vec-digit-{idx}" class="vec-digit" data-final="{fmt_val}">{fmt_val}</span>'
+        f'<span id="vec-cal-{idx}" class="vec-cal">{esc(caliper)}</span></div>'
+    )
+
+
+def _render_shredder(url, result):
+    """Renders Stage 1: The Lexical Shredder, Caliper Ruler, and 8-digit Vector Lock."""
+    tokens = _parse_url_tokens(url)
+    shaps = {d["feature"]: d["shap_value"] for d in result["all_features"]}
+    cells = _resolve_rail_cells(tokens, shaps)
+    blocks = "".join(_shred_token_block(i, c) for i, c in enumerate(cells))
+    vec = result.get("live_vector", [1] * 8)
+    calipers = result.get("calipers", [""] * 8)
+    slots = "".join(_vec_register_slot(i, LIVE_FEATURES[i], vec[i], calipers[i]) for i in range(8))
+    char_len = len(url)
+    len_pct = min(100.0, char_len / 100.0 * 100.0)
+    return (
+        f'<section id="shredder-stage" class="shredder scanning">'
+        f'<div class="shredder-top">'
+        f'<div class="shredder-title">Zero socket lexical shredder'
+        f'<span class="shredder-sub">Fractures URI into 5 structural tokens and locks the 8 feature vector in under 1 ms</span></div>'
+        f'<button type="button" class="btn" onclick="replayScan()">Replay scan</button></div>'
+        f'<div class="shred-rail"><div id="scan-laser" class="scan-laser" aria-hidden="true"></div>{blocks}</div>'
+        f'<div class="caliper-row"><span class="caliper-lbl">Length caliper: <strong id="caliper-len-num">{char_len}</strong> chars</span>'
+        f'<div class="caliper-bar"><div class="caliper-fill" style="width: {len_pct:.1f}%;"></div>'
+        f'<div class="caliper-tick" style="left: 54%;" title="54 char suspicious threshold"></div>'
+        f'<div class="caliper-tick" style="left: 75%;" title="75 char phishing threshold"></div></div>'
+        f'<span class="caliper-lbl">Thresholds 54 / 75</span></div>'
+        f'<div class="vec-grid">{slots}</div></section>'
     )
 
 
 def _render_verdict(url, note, risk_pct, result):
-    """Renders verdict tag, inspected URL, large probability readout, and gauge."""
+    """Renders verdict tag, inspected URL, 576-node lookup grid, score readout, and gauge."""
     tone = risk_tone(risk_pct)
     color = TONES[tone]
     return (
         f'<section class="verdict"><div>'
-        f'<div class="tag"><span class="dot" style="background: {color};"></span>{VERDICT_LABELS[tone]}'
+        f'<div class="tag"><span id="verdict-dot" class="dot" style="background: {color};"></span>'
+        f'<span id="verdict-label-txt">{VERDICT_LABELS[tone]}</span>'
         f'<span class="tag-note">{esc(note)}</span></div>'
         f'{_render_url(url, result)}</div>'
+        f'<div class="verdict-right">{_render_matrix_collapse(result)}'
         f'<div class="score"><div id="verdict-score-num" class="score-num" data-val="{risk_pct:.1f}">{risk_pct:.1f}%</div>'
-        f'<div class="score-cap">Phishing probability</div></div></section>'
+        f'<div id="verdict-score-cap" class="score-cap">Phishing probability</div></div></div></section>'
         f'{_render_gauge(risk_pct, color)}'
+        f'{_render_shredder(url, result)}'
     )
 
 
-def _model_item(entry):
+def _model_item(idx, entry):
     """Renders one model agreement readout with a hairline bar."""
     pct = clamp_pct(entry["prob_pct"])
     color = RISK if entry["verdict"] == "Phishing" else SAFE
     return (
         f'<div><div class="model-name">{esc(entry["name"])}</div>'
-        f'<div class="model-val">{pct:.1f}%</div>'
-        f'<div class="model-track"><div class="model-fill" style="width: {pct:.1f}%; background: {color};"></div></div></div>'
+        f'<div id="model-val-{idx}" class="model-val">{pct:.1f}%</div>'
+        f'<div class="model-track"><div id="model-fill-{idx}" class="model-fill" style="width: {pct:.1f}%; background: {color};"></div></div></div>'
     )
 
 
 def _render_models(result):
     """Renders the three model agreement row."""
-    return f'<section class="models">{"".join(map(_model_item, result["consensus"]))}</section>'
+    items = "".join(_model_item(i, e) for i, e in enumerate(result["consensus"]))
+    return f'<section class="models">{items}</section>'
 
 
-# Drivers
+# Stage 3: Shapley Spring-Stack and Drivers
 
 
-def _pick_button(idx, opt, current):
-    """Renders one counterfactual state button for live mode."""
+def _logit_pct(logit_val):
+    """Maps a log odds coordinate in [-4.5, 4.5] onto a [6%, 94%] horizontal track position."""
+    clamped = max(-4.5, min(4.5, float(logit_val)))
+    return 6.0 + (clamped + 4.5) / 9.0 * 88.0
+
+
+def _spring_block(idx, item):
+    """Renders one physics attribution block in the horizontal Shapley spring stack."""
+    s_val = item["shap_value"]
+    width_pct = max(2.2, min(22.0, abs(s_val) / 4.5 * 88.0))
+    cls = "sblk-risk" if s_val >= 0 else "sblk-safe"
+    short = feature_label(item["feature"]).split(" ")[0]
     return (
-        f'<button type="button" class="pick-btn {_active(opt, current, "on")}" '
+        f'<div id="sblk-{item["feature"]}" class="sblk {cls}" data-feat="{item["feature"]}" '
+        f'style="width: {width_pct:.1f}%; animation-delay: {idx * 45}ms;" '
+        f'title="{esc(feature_label(item["feature"]))}: {_fmt_delta(s_val, 3)} log odds">'
+        f'<span class="sblk-txt">{esc(short)} {_fmt_delta(s_val, 2)}</span></div>'
+    )
+
+
+def _render_shapley_stack(result):
+    """Renders Stage 3: The Shapley Spring-Stack log odds tug of war and sigmoid coupler."""
+    base_val = float(result["base_value"])
+    top_items = result["all_features"][:TOP_DRIVERS]
+    net_logit = base_val + sum(d["shap_value"] for d in result["all_features"])
+    prior_x = _logit_pct(base_val)
+    net_x = _logit_pct(net_logit)
+    risk_pct = result["phishing_probability"] * 100.0
+    pos_blocks = "".join(_spring_block(i, d) for i, d in enumerate(top_items) if d["shap_value"] >= 0)
+    neg_blocks = "".join(_spring_block(i, d) for i, d in enumerate(top_items) if d["shap_value"] < 0)
+    return (
+        f'<div class="spring-card">'
+        f'<div class="spring-head">'
+        f'<div><span class="spring-title">Shapley spring stack (TreeSHAP log odds tug of war)</span>'
+        f'<span class="spring-sub">Red blocks shove the posterior axis right toward phishing; green blocks push it left toward legitimate</span></div>'
+        f'<span id="spring-math-tag" class="spring-meta">Prior {_fmt_delta(base_val, 2)} \u2192 Net {_fmt_delta(net_logit, 2)} log odds ({risk_pct:.1f}%)</span></div>'
+        f'<div class="sig-scale"><span>2%</span><span>12%</span><span>Threshold 50% (0.00)</span><span>88%</span><span>98%</span></div>'
+        f'<div class="spring-stage">'
+        f'<div class="zero-line" style="left: 50%;" title="0.00 log odds (50% threshold)"></div>'
+        f'<div id="stack-prior-line" class="prior-line" style="left: {prior_x:.1f}%;"><span class="prior-tag">Base prior {_fmt_delta(base_val, 2)}</span></div>'
+        f'<div class="tug-lanes">'
+        f'<div id="tug-lane-neg" class="tug-lane tug-neg">{neg_blocks}</div>'
+        f'<div id="tug-lane-pos" class="tug-lane tug-pos">{pos_blocks}</div></div>'
+        f'<div id="stack-net-axis" class="net-axis" style="left: {net_x:.1f}%;">'
+        f'<span id="stack-net-tag" class="net-tag">Posterior {_fmt_delta(net_logit, 2)}</span></div></div>'
+        f'<div class="logit-scale"><span>\u22124.0 log odds</span><span>\u22122.0</span><span>0.0</span><span>+2.0</span><span>+4.0 log odds</span></div></div>'
+    )
+
+
+def _pick_button(idx, feat_name, opt, current):
+    """Renders one counterfactual state button with hover preview and instant click morph."""
+    return (
+        f'<button type="button" class="pick-btn {_active(opt, current, "on")}" data-opt="{opt}" '
+        f'onmouseenter="previewOverride({idx}, {opt})" onmouseleave="clearPreview()" '
         f'onclick="setFeatureOverride({idx}, {opt})">{_fmt_state_val(opt)}</button>'
     )
 
@@ -171,16 +347,16 @@ def _state_picker(item):
     """Renders the counterfactual state picker for a live lexical feature."""
     idx = LIVE_FEATURES.index(item["feature"])
     opts = (-1, 0, 1) if item["feature"] in TERNARY_LIVE_FEATURES else (-1, 1)
-    buttons = "".join(_pick_button(idx, opt, item["value"]) for opt in opts)
-    return f'<div class="pick" title="Change this signal to see how the score moves">{buttons}</div>'
+    buttons = "".join(_pick_button(idx, item["feature"], opt, item["value"]) for opt in opts)
+    return f'<div class="pick" data-picker-idx="{idx}" title="Change this signal to morph the URL and score">{buttons}</div>'
 
 
-def _driver_bar(shap_val, max_abs, delay_ms):
+def _driver_bar(feat_name, shap_val, max_abs, delay_ms):
     """Renders a diverging bar: right raises risk, left lowers it."""
     width = min(50.0, abs(shap_val) / max_abs * 50.0)
     side = "fill-up" if shap_val > 0 else "fill-down"
     return (
-        f'<div class="track"><div class="fill {side}" '
+        f'<div class="track"><div id="drv-fill-{feat_name}" class="fill {side}" '
         f'style="width: {width:.1f}%; animation-delay: {delay_ms}ms;"></div></div>'
     )
 
@@ -194,23 +370,24 @@ def _driver_value_color(shap_val):
 
 def _driver_row(mode, item, max_abs, idx):
     """Renders one feature contribution row."""
+    feat = item["feature"]
     shap_val = item["shap_value"]
     extra = " driver-extra" if mode == "uci" and idx >= TOP_DRIVERS else ""
     picker = f"<div>{_state_picker(item)}</div>" if mode == "live" else ""
     return (
-        f'<div class="driver{extra}"><div>'
-        f'<div class="driver-name">{esc(feature_label(item["feature"]))}'
-        f'<span class="driver-key">{esc(item["feature"])} {_fmt_state_val(item["value"])}</span></div>'
-        f'<div class="driver-text">{esc(item["human_text"])}</div></div>'
-        f'{picker}{_driver_bar(shap_val, max_abs, min(idx, TOP_DRIVERS) * 40)}'
-        f'<div class="driver-val" style="color: {_driver_value_color(shap_val)};">{_fmt_delta(shap_val, 3)}</div></div>'
+        f'<div id="drv-row-{feat}" class="driver{extra}" data-feat="{feat}"><div>'
+        f'<div class="driver-name">{esc(feature_label(feat))}'
+        f'<span id="drv-key-{feat}" class="driver-key">{esc(feat)} {_fmt_state_val(item["value"])}</span></div>'
+        f'<div id="drv-txt-{feat}" class="driver-text">{esc(item["human_text"])}</div></div>'
+        f'{picker}{_driver_bar(feat, shap_val, max_abs, min(idx, TOP_DRIVERS) * 40)}'
+        f'<div id="drv-val-{feat}" class="driver-val" style="color: {_driver_value_color(shap_val)};">{_fmt_delta(shap_val, 3)}</div></div>'
     )
 
 
 def _drivers_head(mode, has_overrides):
     """Renders the drivers section header with a mode specific control."""
     sub = (
-        "Each signal pushes the score up or down. Change a signal to see the effect."
+        "Each signal pushes the score up or down. Click any state pill or recourse fix to morph the URL and waterfall."
         if mode == "live"
         else "Each signal pushes the score up or down, measured in TreeSHAP log odds."
     )
@@ -232,49 +409,66 @@ def _drivers_axis(mode):
     spacer = '<div class="axis-spacer"></div>' if mode == "live" else ""
     return (
         f'<div class="axis"><div class="axis-spacer"></div>{spacer}'
-        f'<div class="axis-labels"><span>Lowers risk</span><span>Raises risk</span></div>'
+        f'<div class="axis-labels"><span>Lowers risk (legitimate)</span><span>Raises risk (phishing)</span></div>'
         f'<div style="text-align: right;">Log odds</div></div>'
     )
 
 
 def _render_drivers(mode, result):
-    """Renders the feature contribution section."""
+    """Renders the Shapley spring stack and individual feature contribution rows."""
     drivers = result["all_features"]
     max_abs = max([abs(d["shap_value"]) for d in drivers] + [0.1])
     rows = "".join(_driver_row(mode, item, max_abs, idx) for idx, item in enumerate(drivers))
     live_cls = " live" if mode == "live" else ""
     return (
-        f'<section class="section"><div class="rule" style="margin-bottom: 32px;"></div>{_drivers_head(mode, result.get("has_overrides", False))}'
-        f'<div class="drivers{live_cls}">{_drivers_axis(mode)}{rows}</div></section>'
+        f'<section class="section"><div class="rule" style="margin-bottom: 32px;"></div>'
+        f'{_drivers_head(mode, result.get("has_overrides", False))}'
+        f'{_render_shapley_stack(result)}'
+        f'<div id="drivers-list" class="drivers{live_cls}">{_drivers_axis(mode)}{rows}</div></section>'
     )
 
 
 def _fix_row(hint):
-    """Renders one counterfactual suggestion row."""
+    """Renders one interactive counterfactual recourse row that triggers inline URL morphing."""
+    feat = hint["feature"]
+    feat_idx = LIVE_FEATURES.index(feat) if feat in LIVE_FEATURES else -1
+    sug_val = int(hint.get("suggested_value", 1))
+    action_attrs = (
+        f'onclick="applyCounterfactual({feat_idx}, {sug_val}, \'{feat}\')" '
+        f'onmouseenter="previewOverride({feat_idx}, {sug_val})" onmouseleave="clearPreview()"'
+        if feat_idx >= 0
+        else f'onclick="morphUrlTokenOnly(\'{feat}\')"'
+    )
     return (
-        f'<div class="fix"><div><div class="driver-name">{esc(feature_label(hint["feature"]))}</div>'
+        f'<div class="fix" data-fix-feat="{feat}" role="button" tabindex="0" {action_attrs}>'
+        f'<div><div class="driver-name">{esc(feature_label(feat))}'
+        f'<span class="fix-badge">Click to erase token &amp; morph score</span></div>'
         f'<div class="fix-text">{esc(_clean_copy(hint["guidance"]))}</div></div>'
         f'<div class="fix-gain">\u2212{hint["risk_reduction_pct"]:.1f}%</div></div>'
     )
 
 
 def _render_fixes(hints):
-    """Renders counterfactual suggestions, or nothing when there are none."""
-    if not hints:
-        return ""
+    """Renders Stage 4: Counterfactual Morphing recourse cards."""
+    hidden = "" if hints else " hidden"
+    rows = "".join(_fix_row(h) for h in (hints or [])[:3])
     return (
-        f'<section class="section"><div class="section-head"><div>'
-        f'<div class="section-title">What would lower the score</div>'
-        f'<div class="section-sub">Single signal changes with the largest drop in phishing probability.</div>'
-        f'</div></div>{"".join(_fix_row(h) for h in hints[:3])}</section>'
+        f'<section id="fixes-section" class="section"{hidden}><div class="section-head"><div>'
+        f'<div class="section-title">What would lower the score (counterfactual morphing)</div>'
+        f'<div class="section-sub">Click a recourse hint to physically erase the offending token from the URL and watch the gauge and Shapley bars collapse in sync.</div>'
+        f'</div></div><div id="fixes-list">{rows}</div></section>'
     )
 
 
 def _results_html(mode, url, note, result):
     """Assembles the full result block for one diagnosis."""
     risk_pct = result["phishing_probability"] * 100.0
+    base_vec = json.dumps(result.get("base_vector", [1] * 8))
+    live_vec = json.dumps(result.get("live_vector", [1] * 8))
     return (
-        f'<div class="results">{_render_verdict(url, note, risk_pct, result)}'
+        f'<div id="results-root" class="results" data-mode="{mode}" data-base-vec="{esc(base_vec)}" '
+        f'data-live-vec="{esc(live_vec)}" data-base-val="{result["base_value"]:.4f}">'
+        f'{_render_verdict(url, note, risk_pct, result)}'
         f'{_render_models(result)}{_render_drivers(mode, result)}'
         f'{_render_fixes(result.get("counterfactual_hints") or [])}</div>'
     )
@@ -584,7 +778,20 @@ def _panel(tab_id, active_tab, body):
     return f'<main id="panel-{tab_id}" class="panel {_active(active_tab, tab_id)}">{body}</main>'
 
 
-def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspect", overrides=None):
+def _live_feat_meta(catalog):
+    """Builds compact plain explanations for the 8 live features for client morphing."""
+    out = {}
+    for feat in LIVE_FEATURES:
+        meta = catalog["features"].get(feat, {})
+        out[feat] = {
+            "label": feature_label(feat),
+            "risk": _clean_copy(meta.get("plain_explanation_phishing", "")),
+            "safe": _clean_copy(meta.get("plain_explanation_legit", "")),
+        }
+    return out
+
+
+def render_full_page_html(mode="live", url=None, idx=DEFAULT_UCI_IDX, tab="inspect", overrides=None):
     """Renders the complete PhishLens console HTML document."""
     data = load_runtime_data()
     live_url = url or DEFAULT_LIVE_URL
@@ -592,7 +799,9 @@ def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspec
     active = build_diagnose_payload("live", url=live_url, overrides=overrides) if mode == "live" else uci_payload
     test_eval = data["bundle"]["test_eval"]
     total = len(test_eval["y_true"])
-    boot = json.dumps({"y_true": test_eval["y_true"], "y_probs": test_eval["y_probs"]})
+    boot = json.dumps({"y_true": test_eval["y_true"], "y_probs": test_eval["y_probs"]}, separators=(",", ":"))
+    lattice = json.dumps(build_client_lattice(), separators=(",", ":"))
+    feat_meta = json.dumps(_live_feat_meta(data["catalog"]), separators=(",", ":"))
     inspect = _render_inspect_tab(mode, live_url, uci_payload, total, active)
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
@@ -606,5 +815,5 @@ def render_full_page_html(mode="uci", url=None, idx=DEFAULT_UCI_IDX, tab="inspec
         f'{_panel("inspect", tab, inspect)}{_panel("eval", tab, _render_eval_tab(data))}'
         f'{_panel("catalog", tab, _render_catalog_tab(data))}'
         '<footer class="footer">PhishLens. Research prototype for explainable phishing detection.</footer>'
-        f'</div><script>{CONSOLE_JS}\nwindow.__evalData = {boot}; drawEvalCharts();</script></body></html>'
+        f'</div><script>{CONSOLE_JS}\nwindow.__evalData = {boot};\nwindow.__liveLattice = {lattice};\nwindow.__featMeta = {feat_meta};\ninitTelemetry(); drawEvalCharts();</script></body></html>'
     )

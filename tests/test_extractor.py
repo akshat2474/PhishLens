@@ -103,3 +103,31 @@ def test_feature_vector_ordering():
     vec = extract_live_feature_vector("https://paypal-update.com/login")
     assert len(vec) == len(LIVE_FEATURES)
     assert all(v in [-1, 0, 1] for v in vec)
+
+
+def test_576_lattice_bijection_and_telemetry_ui():
+    """All 576 live grid states must map to unique (col, row) coordinates and render all 4 telemetry stages."""
+    from src.vercel_console import build_client_lattice, diagnose_live, vec_to_coord
+    from src.console_ui import build_diagnose_payload, render_full_page_html
+
+    lattice = build_client_lattice()
+    assert len(lattice["states"]) == 576
+    assert len(lattice["cells"]) == 576
+
+    coords = {vec_to_coord([int(x) for x in k.split(",")]) for k in lattice["states"]}
+    assert len(coords) == 576
+
+    diag = diagnose_live("http://https-paypal-account-update.com/auth")
+    assert diag["matrix_coord"] == vec_to_coord(diag["live_vector"])
+    assert len(diag["calipers"]) == 8
+
+    payload = build_diagnose_payload("live", url="http://https-paypal-account-update.com/auth")
+    assert "shredder-stage" in payload["html"]
+    assert "matrix-svg" in payload["html"]
+    assert "spring-card" in payload["html"]
+    assert "fixes-section" in payload["html"]
+    assert 'data-feat="Prefix_Suffix"' in payload["html"]
+
+    full_html = render_full_page_html(mode="live")
+    assert "window.__liveLattice" in full_html
+    assert "replayScan()" in full_html

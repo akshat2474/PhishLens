@@ -35,7 +35,7 @@ def _parse_overrides(args):
 
 def _resolve_request_params(args):
     """Extracts validated mode, url, idx, tab, and overrides from query args."""
-    mode = "live" if args.get("mode") == "live" else "uci"
+    mode = "uci" if args.get("mode") == "uci" else "live"
     tab = args.get("tab") if args.get("tab") in ("inspect", "eval", "catalog") else "inspect"
     url = args.get("url")
     idx = _parse_int(args.get("idx"), DEFAULT_UCI_IDX)

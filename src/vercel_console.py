@@ -194,6 +194,74 @@ def _build_uci_consensus(rec):
     ]
 
 
+BINARY_LIVE_INDICES = (0, 2, 3, 4, 5, 7)
+
+
+def vec_to_coord(vec):
+    """Maps an 8 feature live vector to its unique (col, row) in the 64 by 9 lattice."""
+    col = 0
+    for idx in BINARY_LIVE_INDICES:
+        col = (col << 1) | (1 if vec[idx] > 0 else 0)
+    row = (int(vec[1]) + 1) * 3 + (int(vec[6]) + 1)
+    return col, max(0, min(8, row))
+
+
+def _netloc_part(clean_url):
+    """Returns lowercase netloc without port from a sanitized URL."""
+    parsed = urllib.parse.urlsplit(clean_url)
+    return (parsed.hostname or parsed.netloc.split(":")[0] or "").lower()
+
+
+_CALIPER_PAIRS = {
+    0: ("IPv4 literal", "DNS hostname"),
+    2: ("Shortener", "Direct host"),
+    3: ("@ in URI", "0 @ symbols"),
+    4: ("Path //", "Single path"),
+    7: ("https token", "Clean host"),
+}
+
+
+def _binary_caliper(idx, vec):
+    """Returns the risk or safe caliper label for a binary lexical feature."""
+    neg_lbl, pos_lbl = _CALIPER_PAIRS[idx]
+    return neg_lbl if vec[idx] < 0 else pos_lbl
+
+
+def _plural_unit(count, singular, plural):
+    """Formats an integer count with its singular or plural noun."""
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def measure_lexical_calipers(clean_url, vec):
+    """Computes deterministic character and token measurements for the 8 live features."""
+    host = _netloc_part(clean_url)
+    trim_host = host[4:] if host.startswith("www.") else host
+    return [
+        _binary_caliper(0, vec),
+        f"{len(clean_url)} chars",
+        _binary_caliper(2, vec),
+        _binary_caliper(3, vec),
+        _binary_caliper(4, vec),
+        _plural_unit(host.count("-"), "dash", "dashes"),
+        _plural_unit(trim_host.count("."), "dot", "dots"),
+        _binary_caliper(7, vec),
+    ]
+
+
+def build_client_lattice():
+    """Returns compact 576 state lookup table and 64 by 9 probability grid for client morphing."""
+    bundle = load_runtime_data()["bundle"]
+    states = {}
+    cells = [0.0] * 576
+    for key, entry in bundle["live_grid"].items():
+        vec = [int(x) for x in key.split(",")]
+        col, row = vec_to_coord(vec)
+        prob = round(float(entry["prob"]), 4)
+        cells[row * 64 + col] = prob
+        states[key] = [prob, [round(float(s), 4) for s in entry["shaps"]]]
+    return {"base": round(float(bundle["live_base_value"]), 4), "cells": cells, "states": states}
+
+
 def _valid_override(idx, val, vec_len):
     """Checks index bounds and discrete value domain for sandbox override."""
     return 0 <= idx < vec_len and val in (-1, 0, 1)
@@ -217,12 +285,19 @@ def diagnose_live(raw_url, overrides=None):
     bundle = data["bundle"]
     clean_url = sanitize_url(raw_url or DEFAULT_LIVE_URL)
     extracted = extract_live_lexical_features(clean_url)
+    base_vec = [int(extracted[f]) for f in LIVE_FEATURES]
     vec, has_overrides = _apply_live_overrides(extracted, overrides)
     entry = bundle["live_grid"][",".join(map(str, vec))]
     attributions = _assemble_attributions(LIVE_FEATURES, vec, entry["shaps"], data["catalog"])
+    col, row = vec_to_coord(vec)
     return {
         "clean_url": clean_url,
         "has_overrides": has_overrides,
+        "base_vector": base_vec,
+        "live_vector": vec,
+        "live_shaps": [round(float(s), 4) for s in entry["shaps"]],
+        "calipers": measure_lexical_calipers(clean_url, vec),
+        "matrix_coord": (col, row),
         "feature_values": dict(zip(LIVE_FEATURES, vec)),
         "prediction": "Phishing" if entry["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": entry["prob"],
@@ -244,10 +319,21 @@ def diagnose_uci(idx):
     features = list(data["catalog"]["features"].keys())
     attributions = _assemble_attributions(features, rec["vals"], rec["shaps"], data["catalog"])
     true_label = "Phishing" if rec["label"] == 1 else "Legitimate"
+    clean_url = sanitize_url(rec["url"])
+    lex_dict = extract_live_lexical_features(clean_url)
+    lex_vec = [int(lex_dict[f]) for f in LIVE_FEATURES]
+    shaps_by_name = dict(zip(features, rec["shaps"]))
+    lex_shaps = [round(float(shaps_by_name.get(f, 0.0)), 4) for f in LIVE_FEATURES]
     return {
         "idx": safe_idx,
         "url": rec["url"],
+        "clean_url": clean_url,
         "true_label": true_label,
+        "base_vector": lex_vec,
+        "live_vector": lex_vec,
+        "live_shaps": lex_shaps,
+        "calipers": measure_lexical_calipers(clean_url, lex_vec),
+        "matrix_coord": vec_to_coord(lex_vec),
         "prediction": "Phishing" if rec["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": rec["prob"],
         "base_value": data["bundle"]["full_base_value"],
