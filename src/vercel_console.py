@@ -194,72 +194,14 @@ def _build_uci_consensus(rec):
     ]
 
 
-BINARY_LIVE_INDICES = (0, 2, 3, 4, 5, 7)
-
-
-def vec_to_coord(vec):
-    """Maps an 8 feature live vector to its unique (col, row) in the 64 by 9 lattice."""
-    col = 0
-    for idx in BINARY_LIVE_INDICES:
-        col = (col << 1) | (1 if vec[idx] > 0 else 0)
-    row = (int(vec[1]) + 1) * 3 + (int(vec[6]) + 1)
-    return col, max(0, min(8, row))
-
-
-def _netloc_part(clean_url):
-    """Returns lowercase netloc without port from a sanitized URL."""
-    parsed = urllib.parse.urlsplit(clean_url)
-    return (parsed.hostname or parsed.netloc.split(":")[0] or "").lower()
-
-
-_CALIPER_PAIRS = {
-    0: ("IPv4 literal", "DNS hostname"),
-    2: ("Shortener", "Direct host"),
-    3: ("@ in URI", "0 @ symbols"),
-    4: ("Path //", "Single path"),
-    7: ("https token", "Clean host"),
-}
-
-
-def _binary_caliper(idx, vec):
-    """Returns the risk or safe caliper label for a binary lexical feature."""
-    neg_lbl, pos_lbl = _CALIPER_PAIRS[idx]
-    return neg_lbl if vec[idx] < 0 else pos_lbl
-
-
-def _plural_unit(count, singular, plural):
-    """Formats an integer count with its singular or plural noun."""
-    return f"{count} {singular if count == 1 else plural}"
-
-
-def measure_lexical_calipers(clean_url, vec):
-    """Computes deterministic character and token measurements for the 8 live features."""
-    host = _netloc_part(clean_url)
-    trim_host = host[4:] if host.startswith("www.") else host
-    return [
-        _binary_caliper(0, vec),
-        f"{len(clean_url)} chars",
-        _binary_caliper(2, vec),
-        _binary_caliper(3, vec),
-        _binary_caliper(4, vec),
-        _plural_unit(host.count("-"), "dash", "dashes"),
-        _plural_unit(trim_host.count("."), "dot", "dots"),
-        _binary_caliper(7, vec),
-    ]
-
-
 def build_client_lattice():
-    """Returns compact 576 state lookup table and 64 by 9 probability grid for client morphing."""
+    """Returns the compact 576 state lookup table used for instant client side what if changes."""
     bundle = load_runtime_data()["bundle"]
     states = {}
-    cells = [0.0] * 576
     for key, entry in bundle["live_grid"].items():
-        vec = [int(x) for x in key.split(",")]
-        col, row = vec_to_coord(vec)
         prob = round(float(entry["prob"]), 4)
-        cells[row * 64 + col] = prob
         states[key] = [prob, [round(float(s), 4) for s in entry["shaps"]]]
-    return {"base": round(float(bundle["live_base_value"]), 4), "cells": cells, "states": states}
+    return {"base": round(float(bundle["live_base_value"]), 4), "states": states}
 
 
 def _valid_override(idx, val, vec_len):
@@ -279,44 +221,6 @@ def _apply_live_overrides(feats_dict, overrides):
     return vec, vec != base_vec
 
 
-def _slice_for_Redirect(clean_url):
-    """Extracts the path segment or embedded double slash redirect substring."""
-    pos = clean_url.rfind("//")
-    if pos > 7:
-        return clean_url[pos:pos + 28]
-    parsed = urllib.parse.urlsplit(clean_url)
-    return parsed.path if parsed.path and parsed.path != "/" else "/"
-
-
-def _slice_for_subdomains(tokens, host):
-    """Extracts the subdomain chain or registered domain root."""
-    if tokens["subdomain"] != "none":
-        return f"{tokens['subdomain']}."
-    return host or "domain"
-
-
-def _host_or_fallback(host, tokens):
-    """Returns lowercase host or fallback token host."""
-    return host or tokens["host"]
-
-
-def extract_eight_url_slices(clean_url):
-    """Extracts the 8 concrete URL substrings corresponding to LIVE_FEATURES."""
-    tokens = _parse_url_tokens(clean_url)
-    host = _netloc_part(clean_url)
-    base_host = _host_or_fallback(host, tokens)
-    return [
-        base_host,
-        f"{len(clean_url)} chars ({clean_url[:18]}...)",
-        base_host,
-        "@" if "@" in clean_url else "no @ in address",
-        _slice_for_Redirect(clean_url),
-        base_host if "-" in base_host else f"{base_host} (0 dashes)",
-        _slice_for_subdomains(tokens, base_host),
-        "https in host" if "https" in base_host else tokens["scheme"],
-    ]
-
-
 def diagnose_live(raw_url, overrides=None):
     """Evaluates a URL or 8 feature sandbox vector from the precomputed live grid."""
     data = load_runtime_data()
@@ -327,16 +231,12 @@ def diagnose_live(raw_url, overrides=None):
     vec, has_overrides = _apply_live_overrides(extracted, overrides)
     entry = bundle["live_grid"][",".join(map(str, vec))]
     attributions = _assemble_attributions(LIVE_FEATURES, vec, entry["shaps"], data["catalog"])
-    col, row = vec_to_coord(vec)
     return {
         "clean_url": clean_url,
         "has_overrides": has_overrides,
         "base_vector": base_vec,
         "live_vector": vec,
         "live_shaps": [round(float(s), 4) for s in entry["shaps"]],
-        "url_slices": extract_eight_url_slices(clean_url),
-        "calipers": measure_lexical_calipers(clean_url, vec),
-        "matrix_coord": (col, row),
         "feature_values": dict(zip(LIVE_FEATURES, vec)),
         "prediction": "Phishing" if entry["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": entry["prob"],
@@ -371,9 +271,6 @@ def diagnose_uci(idx):
         "base_vector": lex_vec,
         "live_vector": lex_vec,
         "live_shaps": lex_shaps,
-        "url_slices": extract_eight_url_slices(clean_url),
-        "calipers": measure_lexical_calipers(clean_url, lex_vec),
-        "matrix_coord": vec_to_coord(lex_vec),
         "prediction": "Phishing" if rec["prob"] >= 0.50 else "Legitimate",
         "phishing_probability": rec["prob"],
         "base_value": data["bundle"]["full_base_value"],

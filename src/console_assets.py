@@ -3,6 +3,8 @@ Static stylesheet and client script for the PhishLens web console.
 Calm charcoal document layout: content sits on the page, color is reserved for small marks.
 """
 
+from src.demo_stage import DEMO_CSS, DEMO_JS
+
 PAGE_CSS = """
 :root {
     --bg: #181818;
@@ -103,162 +105,60 @@ button { cursor: pointer; }
 }
 .preset:hover { color: var(--text); border-color: var(--line-strong); }
 
-/* Results & 8-Part URL Breakdown */
+/* Results */
 #inspect-results { transition: opacity 200ms; }
 #inspect-results.loading { opacity: 0.5; }
-.results { margin-top: 32px; animation: rise 360ms var(--ease) both; }
-.verdict { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; }
-.tag { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 600; }
-.tag-note { font-size: 12px; line-height: 16px; color: var(--muted); font-weight: 400; }
-.dot { width: 8px; height: 8px; border-radius: 9999px; flex: none; transition: background-color 240ms; }
-.url {
-    margin-top: 12px; font-family: var(--mono); font-size: 18px; line-height: 28px;
-    color: var(--text); word-break: break-all;
-}
-.url-seg { transition: text-decoration-color 240ms; }
-.url-risk { text-decoration: underline; text-decoration-color: var(--risk); text-decoration-thickness: 2px; text-underline-offset: 6px; }
-.morph-token {
-    display: inline-block; max-width: 320px; overflow: hidden; vertical-align: bottom;
-    transition: max-width 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 240ms ease, background-color 200ms ease, color 200ms ease;
-    border-radius: 2px;
-}
-.morph-token.erased { max-width: 0px !important; opacity: 0 !important; }
-.morph-token.preview-erase { background: #313131; color: #E57373; }
-.score { text-align: right; flex: none; }
-.score-num { font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-.score-cap { margin-top: 8px; font-size: 12px; line-height: 16px; color: var(--faint); }
+.results { margin-top: 0; animation: rise 360ms var(--ease) both; }
 
-/* Gauge & Needle */
-.gauge { position: relative; height: 6px; margin-top: 24px; border-radius: 9999px; background: var(--raised); }
-.gauge-fill {
-    position: absolute; top: 0; bottom: 0; left: 0; border-radius: 9999px;
-    transform-origin: left center; transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1), background-color 280ms ease;
-}
-.gauge-needle {
-    position: absolute; top: -5px; width: 2px; height: 16px; background: #FFFFFF; border-radius: 2px;
-    transform: translateX(-50%); transition: left 600ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.gauge-ghost {
-    position: absolute; top: -5px; width: 2px; height: 16px; background: var(--safe); border-radius: 2px;
-    transform: translateX(-50%); pointer-events: none;
-}
-.gauge-mid { position: absolute; left: 50%; transform: translateX(-50%); }
-.gauge-tick { position: absolute; left: 50%; top: -3px; width: 1px; height: 12px; background: var(--faint); }
-.gauge-scale { position: relative; display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); }
-
-/* 8-Part URL Fracture Strip */
-.shredder {
-    margin-top: 32px; padding: 24px; background: var(--surface);
-    border: 1px solid var(--line); border-radius: 12px;
-}
-.shredder-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-.shredder-title { font-size: 16px; line-height: 24px; font-weight: 600; color: #FFFFFF; }
-.shredder-sub { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); }
-.fracture-strip {
-    position: relative; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
-    gap: 8px; transition: gap 520ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.fracture-strip.joined { gap: 0px !important; }
-.scan-laser {
-    position: absolute; top: -4px; bottom: -4px; left: 0; width: 2px; background: #FFFFFF;
-    pointer-events: none; opacity: 0; z-index: 5;
-}
-.scan-laser.sweeping { animation: laserSweep 820ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-.fchip {
-    padding: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
-    cursor: pointer;
-    transition: border-color 320ms ease, border-radius 420ms ease, transform 420ms cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 240ms ease;
-}
-.fracture-strip.joined .fchip {
-    border-color: var(--line) !important; border-radius: 0px !important; transform: scale(0.98);
-}
-.fracture-strip.joined .fchip:first-of-type { border-radius: 8px 0 0 8px !important; }
-.fracture-strip.joined .fchip:last-of-type { border-radius: 0 8px 8px 0 !important; }
-.fchip.chip-risk { border-color: var(--risk); }
-.fchip.chip-safe { border-color: #272727; }
-.fchip:hover { background: var(--raised); transform: translateY(-2px); }
-.fchip-top { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
-.fchip-num { font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); }
-.fchip-share { font-family: var(--mono); font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; }
-.fchip.chip-risk .fchip-share { color: var(--risk); }
-.fchip.chip-safe .fchip-share { color: var(--safe); }
-.fchip-slice {
-    margin-top: 8px; font-family: var(--mono); font-size: 12px; line-height: 16px; color: #FFFFFF;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.fchip-lbl { margin-top: 4px; font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 32px 0; }
+.model-name { font-size: 12px; line-height: 16px; color: var(--faint); }
+.model-val { margin-top: 4px; font-size: 18px; line-height: 28px; font-weight: 600; font-variant-numeric: tabular-nums; color: #FFFFFF; }
+.model-track { height: 2px; margin-top: 8px; border-radius: 9999px; background: var(--raised); overflow: hidden; }
+.model-fill { height: 2px; border-radius: 9999px; transform-origin: left center; animation: grow 700ms var(--ease) both; }
 
 .section { padding: 32px 0 0; }
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 .section-title { font-size: 20px; line-height: 28px; font-weight: 600; color: #FFFFFF; }
 .section-sub { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); max-width: 680px; text-wrap: pretty; }
 
-/* 8 URL Part Relevance Cards */
-.drivers { display: flex; flex-direction: column; gap: 12px; }
-.driver {
-    display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 24px; align-items: center;
-    padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
-    transition: opacity 380ms ease, transform 380ms cubic-bezier(0.22, 1, 0.36, 1), border-color 200ms ease;
-}
-.drivers.live .driver { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; }
-.driver.part-risk { border-color: #3A2022; }
-.driver.part-pending { opacity: 0.15; transform: translateY(8px); }
-.driver:hover { border-color: var(--line-strong); }
+/* Benchmark signal list */
+.drivers { --cols: minmax(0, 1.5fr) minmax(0, 1fr) 72px; }
+.axis, .driver { display: grid; grid-template-columns: var(--cols); gap: 24px; align-items: center; }
+.axis { padding: 0 0 8px; font-size: 12px; line-height: 16px; color: var(--faint); }
+.axis-labels { display: flex; justify-content: space-between; }
+.driver { padding: 12px; margin: 0 -12px; border-radius: 8px; transition: background-color 150ms; }
+.driver:hover { background: var(--surface); }
 .driver-extra { display: none; }
 .show-all .driver-extra { display: grid; animation: rise 240ms var(--ease) both; }
-.driver-name { display: flex; align-items: center; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 600; color: #FFFFFF; }
-.part-idx {
-    font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 500;
-    color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px;
+.driver-name { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 16px; line-height: 24px; font-weight: 600; color: #FFFFFF; }
+.driver-key { font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); font-weight: 400; }
+.driver-text {
+    margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--muted); text-wrap: pretty;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
 }
-.part-slice-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.part-slice-code {
-    font-family: var(--mono); font-size: 12px; line-height: 16px; color: #FFFFFF;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px;
-    max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.part-caliper { font-family: var(--mono); font-size: 12px; line-height: 16px; color: var(--faint); }
-.driver-text { margin-top: 8px; font-size: 14px; line-height: 20px; color: var(--muted); text-wrap: pretty; }
+.driver:hover .driver-text { -webkit-line-clamp: 3; }
+.track { position: relative; height: 16px; }
+.track::before { content: ""; position: absolute; left: 50%; top: 0; width: 1px; height: 16px; background: #313131; }
+.fill { position: absolute; top: 5px; height: 6px; border-radius: 9999px; animation: grow 600ms var(--ease) both; }
+.fill-up { left: 50%; background: var(--risk); transform-origin: left center; }
+.fill-down { right: 50%; background: var(--safe); transform-origin: right center; }
+.driver-val { font-family: var(--mono); font-size: 16px; line-height: 24px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
 
-.rel-col { display: flex; flex-direction: column; gap: 8px; }
-.rel-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-family: var(--mono); font-size: 12px; line-height: 16px; }
-.rel-pct { font-size: 14px; line-height: 20px; font-weight: 600; color: #FFFFFF; }
-.rel-bar-risk-txt { color: var(--risk); }
-.rel-bar-safe-txt { color: var(--safe); }
-.rel-track { height: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 9999px; overflow: hidden; }
-.rel-fill {
-    height: 100%; border-radius: 9999px; transform-origin: left center;
-    transition: width 560ms cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 240ms ease;
-}
-.rel-bar-risk { background: var(--risk); }
-.rel-bar-safe { background: var(--safe); }
-
-.pick {
-    display: inline-flex; gap: 2px; padding: 2px;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
-}
-.pick-btn {
-    background: none; border: 0; padding: 4px 12px; border-radius: 6px;
-    font-family: var(--sans); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--faint);
-    transition: color 150ms, background-color 150ms;
-}
-.pick-btn:hover { color: var(--text); }
-.pick-btn.on { background: var(--raised); color: var(--text); }
-
-/* Counterfactual Fixes */
+/* What would make this link safer */
 .fix {
     display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center;
     padding: 16px; margin-bottom: 8px; border-radius: 12px;
-    background: var(--surface); border: 1px solid var(--line); cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line);
     transition: background-color 150ms, border-color 150ms;
 }
-.fix:hover { background: var(--raised); border-color: var(--safe); }
+.fix[role="button"] { cursor: pointer; }
+.fix[role="button"]:hover { background: var(--raised); border-color: var(--safe); }
 .fix-badge {
     font-family: var(--mono); font-size: 12px; line-height: 16px; font-weight: 400;
-    color: var(--safe); padding: 2px 8px; border-radius: 9999px; border: 1px solid var(--line-strong);
+    color: var(--safe); padding: 2px 8px; border-radius: 9999px; border: 1px solid #313131;
 }
 .fix-text { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--muted); text-wrap: pretty; }
-.fix-gain { font-family: var(--mono); font-size: 18px; line-height: 28px; font-weight: 600; color: var(--safe); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fix-gain { font-family: var(--mono); font-size: 16px; line-height: 24px; font-weight: 500; color: var(--safe); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* Evaluation */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
@@ -335,72 +235,29 @@ button { cursor: pointer; }
 
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-@keyframes laserSweep {
-    0% { left: 0%; opacity: 1; }
-    92% { left: 100%; opacity: 1; }
-    100% { left: 100%; opacity: 0; }
-}
-@keyframes drawRoute {
-    from { stroke-dashoffset: 520; }
-    to { stroke-dashoffset: 0; }
-}
-@keyframes priorDrop {
-    from { transform: translateY(-100%); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-@keyframes springDrop {
-    0% { transform: translateY(-28px) scaleX(0.4); opacity: 0; }
-    70% { transform: translateY(2px) scaleX(1.03); opacity: 1; }
-    100% { transform: translateY(0) scaleX(1); opacity: 1; }
-}
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 @media (max-width: 1100px) {
     .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .fracture-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
     .page { padding: 0 16px 48px; }
     .nav-meta { display: none; }
-    .verdict { grid-template-columns: 1fr; gap: 24px; }
-    .score { text-align: left; }
-    .fracture-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .stats, .thresh-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+    .models, .stats, .thresh-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
     .split, .cat-grid { grid-template-columns: 1fr; }
-    .driver, .drivers.live .driver { grid-template-columns: 1fr; gap: 16px; }
-    .counter { display: none; }
+    .drivers { --cols: minmax(0, 1fr) 64px; }
+    .drivers .track, .axis { display: none; }
+    .counter, .driver-key { display: none; }
     .nav-tab { padding: 8px; }
     .imp { grid-template-columns: 120px minmax(0, 1fr) 48px; }
 }
-"""
+""" + DEMO_CSS
 
-CONSOLE_JS = """
-const $ = (id) => document.getElementById(id);
-const LIVE_FEATS = [
-    'having_IP_Address', 'URL_Length', 'Shortining_Service', 'having_At_Symbol',
-    'double_slash_redirecting', 'Prefix_Suffix', 'having_Sub_Domain', 'HTTPS_token'
-];
+CONSOLE_JS = "const $ = (id) => document.getElementById(id);\n" + DEMO_JS + """
 window.__overrides = {};
 
-function fmtDelta(v, d = 2) { return (v >= 0 ? '+' : '\u2212') + Math.abs(v).toFixed(d); }
-function toneColor(pct) { return pct >= 70 ? '#E5484D' : (pct >= 50 ? '#E2A336' : '#30A46C'); }
-function toneLabel(pct) { return pct >= 70 ? 'Likely phishing' : (pct >= 50 ? 'Suspicious' : 'Looks legitimate'); }
-
-function getLiveVec() {
-    const root = $('results-root');
-    if (!root) return [1, 1, 1, 1, 1, 1, 1, 1];
-    return JSON.parse(root.dataset.liveVec || '[1,1,1,1,1,1,1,1]');
-}
-
-function getBaseVec() {
-    const root = $('results-root');
-    if (!root) return [1, 1, 1, 1, 1, 1, 1, 1];
-    return JSON.parse(root.dataset.baseVec || '[1,1,1,1,1,1,1,1]');
-}
-
 function tween(el, target, decimals, suffix) {
-    if (!el) return;
     const start = parseFloat(el.dataset.val);
     el.dataset.val = String(target);
     if (Number.isNaN(start) || Math.abs(target - start) < 0.05) {
@@ -409,7 +266,7 @@ function tween(el, target, decimals, suffix) {
     }
     const t0 = performance.now();
     function step(now) {
-        const p = Math.min(1, (now - t0) / 520);
+        const p = Math.min(1, (now - t0) / 420);
         const eased = 1 - Math.pow(1 - p, 3);
         el.textContent = (start + (target - start) * eased).toFixed(decimals) + suffix;
         if (p < 1) requestAnimationFrame(step);
@@ -417,204 +274,11 @@ function tween(el, target, decimals, suffix) {
     requestAnimationFrame(step);
 }
 
-function scrollToPart(feat) {
-    const row = $('drv-row-' + feat);
-    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-/* Choreographed 8-Part URL Fracture & Relevance Reveal Animation */
-function replayScan() {
-    const strip = $('fracture-strip'), laser = $('scan-laser');
-    if (!strip || !laser) return;
-
-    /* Step 1: Join the 8 parts into one fused URL bar and reset relevance bars to 0% */
-    strip.classList.add('joined');
-    laser.classList.remove('sweeping');
-    const fills = document.querySelectorAll('.rel-fill');
-    const savedWidths = [];
-    fills.forEach((f, i) => {
-        savedWidths[i] = f.style.width;
-        f.style.transition = 'none';
-        f.style.width = '0%';
-    });
-    const rows = document.querySelectorAll('.driver');
-    rows.forEach(r => r.classList.add('part-pending'));
-
-    /* Step 2: Sweep laser across and visibly fracture into 8 parts with staggered relevance bars */
-    void strip.offsetWidth;
-    setTimeout(() => {
-        laser.classList.add('sweeping');
-        strip.classList.remove('joined');
-        rows.forEach((r, i) => {
-            setTimeout(() => r.classList.remove('part-pending'), i * 75);
-        });
-        fills.forEach((f, i) => {
-            f.style.transition = '';
-            f.style.width = savedWidths[i];
-        });
-    }, 140);
-}
-
-function initTelemetry() {
-    replayScan();
-}
-
-function previewOverride(idx, val) {
-    if (!window.__liveLattice || idx < 0) return;
-    const vec = getLiveVec().slice();
-    vec[idx] = val;
-    const entry = window.__liveLattice.states[vec.join(',')];
-    if (!entry) return;
-    const targetPct = Math.min(100, Math.max(0, entry[0] * 100));
-    const ghost = $('gauge-ghost');
-    if (ghost) { ghost.hidden = false; ghost.style.left = targetPct.toFixed(1) + '%'; }
-    const feat = LIVE_FEATS[idx];
-    document.querySelectorAll(`.morph-token[data-feat="${feat}"]`).forEach(el => {
-        el.classList.toggle('preview-erase', val > 0);
-    });
-}
-
-function clearPreview() {
-    const ghost = $('gauge-ghost');
-    if (ghost) ghost.hidden = true;
-    document.querySelectorAll('.morph-token.preview-erase').forEach(el => el.classList.remove('preview-erase'));
-}
-
-function morphUrlTokenOnly(feat, erase = true) {
-    document.querySelectorAll(`.morph-token[data-feat="${feat}"]`).forEach(el => {
-        el.classList.remove('preview-erase');
-        el.classList.toggle('erased', erase);
-    });
-}
-
-function updateEightPartsRelevance(vec, shaps) {
-    let totalAbs = 0;
-    for (let i = 0; i < 8; i++) totalAbs += Math.abs(shaps[i]);
-    totalAbs = Math.max(0.01, totalAbs);
-
-    for (let i = 0; i < 8; i++) {
-        const feat = LIVE_FEATS[i], sVal = shaps[i];
-        const sharePct = Math.abs(sVal) / totalAbs * 100;
-        const isRisk = sVal > 0;
-        const meta = (window.__featMeta && window.__featMeta[feat]) || { label: feat, risk: '', safe: '' };
-
-        /* Update top fracture chip */
-        const chip = $('fchip-' + i), chipShare = $('fchip-share-' + i);
-        if (chip) {
-            chip.classList.toggle('chip-risk', sVal > 0.005);
-            chip.classList.toggle('chip-safe', sVal <= 0.005);
-        }
-        if (chipShare) chipShare.textContent = sharePct.toFixed(0) + '%';
-
-        /* Update part card relevance bar & direction */
-        const row = $('drv-row-' + feat), fill = $('drv-fill-' + feat), shareEl = $('drv-share-' + feat), dirEl = $('drv-dir-' + feat), txtEl = $('drv-txt-' + feat);
-        if (row) {
-            row.classList.toggle('part-risk', sVal > 0.005);
-            row.classList.toggle('part-safe', sVal <= 0.005);
-        }
-        if (fill) {
-            fill.style.transitionDelay = '0ms';
-            fill.style.width = Math.min(100, Math.max(3, sharePct)).toFixed(1) + '%';
-            fill.classList.toggle('rel-bar-risk', isRisk);
-            fill.classList.toggle('rel-bar-safe', !isRisk);
-        }
-        if (shareEl) shareEl.textContent = sharePct.toFixed(1) + '% relevance';
-        if (dirEl) {
-            dirEl.textContent = (isRisk ? 'Phishing push' : 'Safe pull') + ' (' + fmtDelta(sVal, 2) + ')';
-            dirEl.className = 'rel-dir ' + (isRisk ? 'rel-bar-risk-txt' : 'rel-bar-safe-txt');
-        }
-        if (txtEl) txtEl.textContent = isRisk ? meta.risk : meta.safe;
-    }
-}
-
-function updateLiveRecourseList(vec, currentProb) {
-    const sec = $('fixes-section'), list = $('fixes-list');
-    if (!sec || !list || !window.__liveLattice) return;
-    const candidates = [];
-    for (let i = 0; i < 8; i++) {
-        if (vec[i] === 1) continue;
-        const testVec = vec.slice();
-        testVec[i] = 1;
-        const entry = window.__liveLattice.states[testVec.join(',')];
-        if (!entry) continue;
-        const dropPct = (currentProb - entry[0]) * 100;
-        if (dropPct > 1.0) candidates.push({ idx: i, feat: LIVE_FEATS[i], drop: dropPct });
-    }
-    candidates.sort((a, b) => b.drop - a.drop);
-    if (!candidates.length) { sec.hidden = true; return; }
-    sec.hidden = false;
-    list.innerHTML = candidates.slice(0, 3).map(c => {
-        const lbl = (window.__featMeta && window.__featMeta[c.feat]) ? window.__featMeta[c.feat].label : c.feat;
-        return `<div class="fix" data-fix-feat="${c.feat}" role="button" tabindex="0" `
-            + `onclick="applyCounterfactual(${c.idx}, 1, '${c.feat}')" `
-            + `onmouseenter="previewOverride(${c.idx}, 1)" onmouseleave="clearPreview()">`
-            + `<div><div class="driver-name">${lbl}<span class="fix-badge">Click to fix this part</span></div>`
-            + `<div class="fix-text">If ${c.feat} met legitimate criteria, phishing probability would drop by ${c.drop.toFixed(1)}%.</div></div>`
-            + `<div class="fix-gain">\u2212${c.drop.toFixed(1)}% risk</div></div>`;
-    }).join('');
-}
-
-function reconcileLiveClient(vec) {
-    const root = $('results-root');
-    if (!root || !window.__liveLattice) return false;
-    const entry = window.__liveLattice.states[vec.join(',')];
-    if (!entry) return false;
-    root.dataset.liveVec = JSON.stringify(vec);
-    const [prob, shaps] = entry;
-    const riskPct = prob * 100;
-    const col = toneColor(riskPct);
-
-    tween($('verdict-score-num'), riskPct, 1, '%');
-    if ($('verdict-dot')) $('verdict-dot').style.background = col;
-    if ($('verdict-label-txt')) $('verdict-label-txt').textContent = toneLabel(riskPct);
-    if ($('gauge-fill')) { $('gauge-fill').style.width = riskPct.toFixed(1) + '%'; $('gauge-fill').style.background = col; }
-    if ($('gauge-needle')) $('gauge-needle').style.left = riskPct.toFixed(1) + '%';
-
-    for (let i = 0; i < 8; i++) {
-        document.querySelectorAll(`.pick[data-picker-idx="${i}"] .pick-btn`).forEach(btn => {
-            btn.classList.toggle('on', parseInt(btn.dataset.opt, 10) === vec[i]);
-        });
-        morphUrlTokenOnly(LIVE_FEATS[i], vec[i] > 0);
-    }
-
-    updateEightPartsRelevance(vec, shaps);
-    updateLiveRecourseList(vec, prob);
-    const baseVec = getBaseVec();
-    const hasOverrides = vec.some((v, i) => v !== baseVec[i]);
-    if ($('reset-overrides-btn')) $('reset-overrides-btn').hidden = !hasOverrides;
-    clearPreview();
-    return true;
-}
-
-function applyCounterfactual(idx, val, feat) {
-    morphUrlTokenOnly(feat, val > 0);
-    setFeatureOverride(idx, val);
-}
-
-function setFeatureOverride(idx, val) {
-    window.__overrides['f_' + idx] = val;
-    const root = $('results-root');
-    if (root && root.dataset.mode === 'live' && window.__liveLattice) {
-        const vec = getLiveVec().slice();
-        vec[idx] = val;
-        if (reconcileLiveClient(vec)) return;
-    }
-    loadDiagnosis(Object.assign({ mode: 'live', url: liveUrl() }, window.__overrides));
-}
-
-function resetLiveOverrides() {
-    window.__overrides = {};
-    const root = $('results-root');
-    if (root && root.dataset.mode === 'live' && window.__liveLattice) {
-        if (reconcileLiveClient(getBaseVec().slice())) return;
-    }
-    loadDiagnosis({ mode: 'live', url: liveUrl() });
-}
-
 function switchTab(name) {
     document.querySelectorAll('.nav-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
     if (name === 'eval') drawEvalCharts();
+    if (name === 'inspect') Demo.init();
 }
 
 function totalRecords() {
@@ -626,15 +290,11 @@ function syncControls(data) {
         $('uci-url-text').textContent = data.url;
         $('uci-idx-input').value = String(data.idx);
         $('uci-record-counter').textContent = (data.idx + 1).toLocaleString() + ' / ' + totalRecords().toLocaleString();
-        return;
     }
-    if ($('reset-overrides-btn')) $('reset-overrides-btn').hidden = !data.has_overrides;
 }
 
 async function loadDiagnosis(params) {
     const box = $('inspect-results');
-    const prevEl = $('verdict-score-num');
-    const prev = prevEl ? prevEl.dataset.val : null;
     const showAll = !!document.querySelector('.drivers.show-all');
     box.classList.add('loading');
     try {
@@ -644,9 +304,7 @@ async function loadDiagnosis(params) {
         box.innerHTML = data.html;
         syncControls(data);
         if (showAll) toggleDrivers(true);
-        const el = $('verdict-score-num');
-        if (el && prev !== null) { el.dataset.val = prev; tween(el, data.risk_pct, 1, '%'); }
-        replayScan();
+        Demo.init();
     } finally {
         box.classList.remove('loading');
     }
@@ -675,6 +333,67 @@ function submitLiveScan(ev) {
     window.__overrides = {};
     if (liveUrl()) loadDiagnosis({ mode: 'live', url: liveUrl() });
 }
+
+/* What if changes: the whole 576 state table ships with the page, so a change is instant */
+function latticeEntry(vec) {
+    return window.__liveLattice ? window.__liveLattice.states[vec.join(',')] : null;
+}
+
+function renderFixList(vec, prob) {
+    const sec = $('fixes-section'), list = $('fixes-list'), demo = Demo.state();
+    if (!sec || !list) return;
+    const rows = [];
+    for (let i = 0; i < 8; i++) {
+        const next = vec[i] === 1 ? null : latticeEntry(vec.map((v, k) => (k === i ? 1 : v)));
+        const drop = next ? (prob - next[0]) * 100 : 0;
+        if (drop > 1) rows.push({ i, drop });
+    }
+    rows.sort((a, b) => b.drop - a.drop);
+    sec.hidden = rows.length === 0;
+    list.innerHTML = rows.slice(0, 3).map(r =>
+        `<div class="fix" role="button" tabindex="0" onclick="applyCounterfactual(${r.i}, 1)" `
+        + `onmouseenter="previewOverride(${r.i}, 1)" onmouseleave="clearPreview()">`
+        + `<div><div class="driver-name">${demo.labels[r.i]}<span class="fix-badge">Click to try</span></div>`
+        + `<div class="fix-text">Make this part safe and the probability drops by ${r.drop.toFixed(1)} points.</div></div>`
+        + `<div class="fix-gain">\u2212${r.drop.toFixed(1)} points</div></div>`
+    ).join('');
+}
+
+function applyVec(vec) {
+    const entry = latticeEntry(vec);
+    if (!entry) return false;
+    Demo.apply(vec, entry[1]);
+    renderFixList(vec, entry[0]);
+    const base = Demo.state().base;
+    const reset = $('reset-overrides-btn');
+    if (reset) reset.hidden = !vec.some((v, i) => v !== base[i]);
+    Demo.ghost(null);
+    return true;
+}
+
+function applyCounterfactual(idx, val) { setFeatureOverride(idx, val); }
+
+function setFeatureOverride(idx, val) {
+    window.__overrides['f_' + idx] = val;
+    const state = Demo.state();
+    if (state.vec && applyVec(state.vec.map((v, i) => (i === idx ? val : v)))) return;
+    loadDiagnosis(Object.assign({ mode: 'live', url: liveUrl() }, window.__overrides));
+}
+
+function resetLiveOverrides() {
+    window.__overrides = {};
+    const state = Demo.state();
+    if (state.base && applyVec(state.base.slice())) return;
+    loadDiagnosis({ mode: 'live', url: liveUrl() });
+}
+
+function previewOverride(idx, val) {
+    const state = Demo.state();
+    const entry = state.vec ? latticeEntry(state.vec.map((v, i) => (i === idx ? val : v))) : null;
+    if (entry) Demo.ghost(entry[0] * 100);
+}
+
+function clearPreview() { Demo.ghost(null); }
 
 function pickRandomUci() {
     loadDiagnosis({ mode: 'uci', idx: Math.floor(Math.random() * totalRecords()) });
